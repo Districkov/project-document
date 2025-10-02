@@ -2,16 +2,21 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { StringDecoder } = require('string_decoder');
 
 const PORT = process.env.PORT || 10000;
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
+const FRONTEND_DIR = path.join(__dirname, 'frontend');
 const ADMIN_PASSWORD = "admin123";
 
 // Создаем необходимые папки
 if (!fs.existsSync(UPLOADS_DIR)) {
     fs.mkdirSync(UPLOADS_DIR, { recursive: true });
     console.log('✅ Папка uploads создана');
+}
+
+if (!fs.existsSync(FRONTEND_DIR)) {
+    fs.mkdirSync(FRONTEND_DIR, { recursive: true });
+    console.log('✅ Папка frontend создана');
 }
 
 const DB_PATH = path.join(__dirname, 'database.json');
@@ -226,12 +231,21 @@ const server = http.createServer((req, res) => {
         return;
     }
     
-    // Статические файлы
+    // Статические файлы из папки frontend
     if (req.method === 'GET') {
-        let filePath = pathname === '/' ? 'index.html' : pathname.slice(1);
+        let filePath;
         
-        // Безопасность: предотвращаем доступ к родительским директориям
-        filePath = path.join(__dirname, filePath);
+        if (pathname === '/') {
+            filePath = path.join(FRONTEND_DIR, 'index.html');
+        } else if (pathname === '/admin.html') {
+            filePath = path.join(FRONTEND_DIR, 'admin.html');
+        } else {
+            // Убираем начальный слэш для создания корректного пути
+            const relativePath = pathname.startsWith('/') ? pathname.slice(1) : pathname;
+            filePath = path.join(FRONTEND_DIR, relativePath);
+        }
+        
+        console.log(`📁 Поиск файла: ${filePath}`);
         
         try {
             if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
@@ -241,28 +255,70 @@ const server = http.createServer((req, res) => {
                 
                 res.writeHead(200, { 'Content-Type': contentType });
                 res.end(content);
+                console.log(`✅ Файл отправлен: ${pathname}`);
             } else {
-                // Файл не найден
-                res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
-                res.end(`
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <title>404 - Не найдено</title>
-                        <style>
-                            body { font-family: Arial, sans-serif; margin: 40px; text-align: center; }
-                            .container { max-width: 600px; margin: 0 auto; }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="container">
-                            <h1>❌ 404 - Файл не найден</h1>
-                            <p>Запрошенный файл не существует: ${pathname}</p>
-                            <p><a href="/">Вернуться на главную</a></p>
-                        </div>
-                    </body>
-                    </html>
-                `);
+                console.log(`❌ Файл не найден: ${filePath}`);
+                
+                // Пробуем index.html для SPA роутинга
+                const indexFile = path.join(FRONTEND_DIR, 'index.html');
+                if (fs.existsSync(indexFile)) {
+                    const content = fs.readFileSync(indexFile);
+                    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+                    res.end(content);
+                    console.log(`✅ Отправлен index.html для: ${pathname}`);
+                } else {
+                    // Файл не найден
+                    res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
+                    res.end(`
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                            <title>404 - Не найдено</title>
+                            <style>
+                                body { 
+                                    font-family: Arial, sans-serif; 
+                                    margin: 40px; 
+                                    text-align: center; 
+                                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                                    color: white;
+                                    min-height: 100vh;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                }
+                                .container { 
+                                    max-width: 600px; 
+                                    background: rgba(255,255,255,0.95);
+                                    color: #333;
+                                    padding: 40px;
+                                    border-radius: 15px;
+                                    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+                                }
+                                h1 { color: #e74c3c; margin-bottom: 20px; }
+                                a { 
+                                    display: inline-block; 
+                                    margin-top: 20px; 
+                                    padding: 12px 24px; 
+                                    background: #3498db; 
+                                    color: white; 
+                                    text-decoration: none; 
+                                    border-radius: 8px;
+                                    transition: all 0.3s ease;
+                                }
+                                a:hover { background: #2980b9; transform: translateY(-2px); }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="container">
+                                <h1>❌ 404 - Файл не найден</h1>
+                                <p>Запрошенный файл не существует: <strong>${pathname}</strong></p>
+                                <p>Проверьте правильность URL или вернитесь на главную страницу</p>
+                                <a href="/">🏠 Вернуться на главную</a>
+                            </div>
+                        </body>
+                        </html>
+                    `);
+                }
             }
         } catch (error) {
             console.log('❌ Ошибка чтения файла:', error);
@@ -312,4 +368,4 @@ process.on('SIGINT', () => {
         console.log('✅ Сервер остановлен');
         process.exit(0);
     });
-});
+});66
