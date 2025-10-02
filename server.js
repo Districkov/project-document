@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { StringDecoder } = require('string_decoder');
 
 const PORT = process.env.PORT || 10000;
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
@@ -98,6 +99,50 @@ function sendSuccess(res, data = {}) {
     });
 }
 
+// Функции для обработки multipart/form-data (ЗАГРУЗКА ФАЙЛОВ)
+function parseMultipartData(body, boundary) {
+    const parts = [];
+    const boundaryBuffer = Buffer.from(`--${boundary}`);
+    const endBoundaryBuffer = Buffer.from(`--${boundary}--`);
+    
+    let start = body.indexOf(boundaryBuffer) + boundaryBuffer.length + 2;
+    
+    while (start < body.length) {
+        const end = body.indexOf(boundaryBuffer, start);
+        const finalEnd = body.indexOf(endBoundaryBuffer, start);
+        
+        if (end === -1 && finalEnd === -1) break;
+        
+        const partEnd = end !== -1 ? end - 2 : finalEnd - 2;
+        if (partEnd <= start) break;
+        
+        const part = body.slice(start, partEnd);
+        parts.push(part);
+        
+        if (finalEnd !== -1) break;
+        start = end + boundaryBuffer.length + 2;
+    }
+    
+    return parts;
+}
+
+function parsePart(part) {
+    const headerEnd = part.indexOf(Buffer.from('\r\n\r\n'));
+    if (headerEnd === -1) return null;
+    
+    const headers = part.slice(0, headerEnd).toString();
+    const content = part.slice(headerEnd + 4);
+    
+    const nameMatch = headers.match(/name="([^"]+)"/);
+    const filenameMatch = headers.match(/filename="([^"]+)"/);
+    
+    return {
+        name: nameMatch ? nameMatch[1] : null,
+        filename: filenameMatch ? filenameMatch[1] : null,
+        content: content
+    };
+}
+
 // API обработчики
 function handleAdminLogin(req, res) {
     let body = '';
@@ -130,26 +175,67 @@ function handleGetDocuments(req, res) {
     }
 }
 
-function handleUploadDocument(req, res) {
-    let body = '';
+// ОБНОВЛЕННАЯ ФУНКЦИЯ ДЛЯ ЗАГРУЗКИ ФАЙЛОВ
+function handleFileUpload(req, res) {
+    const contentType = req.headers['content-type'];
+    const boundaryMatch = contentType.match(/boundary=(.+)$/);
+    
+    if (!boundaryMatch) {
+        return sendError(res, 400, 'No boundary found');
+    }
+    
+    const boundary = boundaryMatch[1];
+    let body = Buffer.alloc(0);
     
     req.on('data', chunk => {
-        body += chunk.toString();
+        body = Buffer.concat([body, chunk]);
     });
     
     req.on('end', () => {
         try {
-            const data = JSON.parse(body);
+            const parts = parseMultipartData(body, boundary);
+            const formData = {};
+            let fileData = null;
+            
+            for (const part of parts) {
+                const partData = parsePart(part);
+                if (!partData) continue;
+                
+                if (partData.filename) {
+                    fileData = partData;
+                } else if (partData.name) {
+                    formData[partData.name] = partData.content.toString();
+                }
+            }
+            
             const db = readDatabase();
+            const documentName = formData.documentName || `Документ ${Date.now()}`;
+            const category = formData.documentCategory || 'general';
+            
+            if (!fileData || !fileData.filename || fileData.content.length === 0) {
+                return sendError(res, 400, 'Файл не был загружен');
+            }
+            
+            const fileExt = path.extname(fileData.filename).toLowerCase();
+            const filename = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}${fileExt}`;
+            const filePath = path.join(UPLOADS_DIR, filename);
+            
+            // Сохраняем файл на диск
+            fs.writeFileSync(filePath, fileData.content);
+            
+            const fileType = fileExt.replace('.', '') || 'file';
+            const fileUrl = `/uploads/${filename}`;
+            
+            console.log(`✅ Файл сохранен: ${filename} (${fileData.content.length} байт, тип: ${fileType})`);
             
             const newDocument = {
                 id: Date.now().toString(),
-                name: data.documentName || `Документ ${Date.now()}`,
-                originalName: data.originalName || 'document',
-                filename: `doc-${Date.now()}.txt`,
-                type: data.fileType || 'file',
-                category: data.documentCategory || 'general',
-                url: `/api/documents/${Date.now()}`,
+                name: documentName,
+                originalName: fileData.filename,
+                filename: filename,
+                type: fileType,
+                category: category,
+                url: fileUrl,
                 uploadDate: new Date().toISOString(),
                 isNew: true
             };
@@ -161,11 +247,14 @@ function handleUploadDocument(req, res) {
                     document: newDocument,
                     message: 'Документ успешно загружен'
                 });
+                console.log(`✅ Документ добавлен: ${documentName}`);
             } else {
                 throw new Error('Ошибка сохранения в базу данных');
             }
+            
         } catch (error) {
-            sendError(res, 500, 'Ошибка загрузки документа');
+            console.error('❌ Ошибка загрузки файла:', error);
+            sendError(res, 500, error.message);
         }
     });
 }
@@ -177,6 +266,19 @@ function handleDeleteDocument(req, res, documentId) {
         
         if (documentIndex === -1) {
             return sendError(res, 404, 'Документ не найден');
+        }
+        
+        const document = db.documents[documentIndex];
+        
+        // Удаляем файл из папки uploads
+        try {
+            const filePath = path.join(UPLOADS_DIR, document.filename);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+                console.log(`✅ Файл удален: ${document.filename}`);
+            }
+        } catch (fileError) {
+            console.log('⚠️ Файл не найден, продолжаем удаление документа...');
         }
         
         db.documents.splice(documentIndex, 1);
@@ -221,13 +323,42 @@ const server = http.createServer((req, res) => {
     }
     
     if (pathname === '/api/documents' && req.method === 'POST') {
-        handleUploadDocument(req, res);
+        handleFileUpload(req, res);
         return;
     }
     
     if (pathname.startsWith('/api/documents/') && req.method === 'DELETE') {
         const documentId = pathname.split('/')[3];
         handleDeleteDocument(req, res, documentId);
+        return;
+    }
+    
+    // ОБСЛУЖИВАНИЕ ЗАГРУЖЕННЫХ ФАЙЛОВ ИЗ UPLOADS
+    if (pathname.startsWith('/uploads/') && req.method === 'GET') {
+        const filename = pathname.replace('/uploads/', '');
+        const filePath = path.join(UPLOADS_DIR, filename);
+        
+        console.log(`📂 Запрос файла: ${filename}`);
+        
+        try {
+            if (fs.existsSync(filePath)) {
+                const content = fs.readFileSync(filePath);
+                const ext = path.extname(filePath).toLowerCase();
+                const contentType = getContentType(ext);
+                
+                res.writeHead(200, { 'Content-Type': contentType });
+                res.end(content);
+                console.log(`✅ Файл отправлен: ${filename}`);
+            } else {
+                console.log(`❌ Файл не найден: ${filename}`);
+                res.writeHead(404);
+                res.end('File not found');
+            }
+        } catch (error) {
+            console.log('❌ Ошибка чтения файла:', error);
+            res.writeHead(500);
+            res.end('Internal Server Error');
+        }
         return;
     }
     
@@ -240,12 +371,9 @@ const server = http.createServer((req, res) => {
         } else if (pathname === '/admin.html') {
             filePath = path.join(FRONTEND_DIR, 'admin.html');
         } else {
-            // Убираем начальный слэш для создания корректного пути
             const relativePath = pathname.startsWith('/') ? pathname.slice(1) : pathname;
             filePath = path.join(FRONTEND_DIR, relativePath);
         }
-        
-        console.log(`📁 Поиск файла: ${filePath}`);
         
         try {
             if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
@@ -255,69 +383,16 @@ const server = http.createServer((req, res) => {
                 
                 res.writeHead(200, { 'Content-Type': contentType });
                 res.end(content);
-                console.log(`✅ Файл отправлен: ${pathname}`);
             } else {
-                console.log(`❌ Файл не найден: ${filePath}`);
-                
-                // Пробуем index.html для SPA роутинга
+                // Для SPA - всегда возвращаем index.html
                 const indexFile = path.join(FRONTEND_DIR, 'index.html');
                 if (fs.existsSync(indexFile)) {
                     const content = fs.readFileSync(indexFile);
                     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
                     res.end(content);
-                    console.log(`✅ Отправлен index.html для: ${pathname}`);
                 } else {
-                    // Файл не найден
-                    res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });
-                    res.end(`
-                        <!DOCTYPE html>
-                        <html>
-                        <head>
-                            <title>404 - Не найдено</title>
-                            <style>
-                                body { 
-                                    font-family: Arial, sans-serif; 
-                                    margin: 40px; 
-                                    text-align: center; 
-                                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                                    color: white;
-                                    min-height: 100vh;
-                                    display: flex;
-                                    align-items: center;
-                                    justify-content: center;
-                                }
-                                .container { 
-                                    max-width: 600px; 
-                                    background: rgba(255,255,255,0.95);
-                                    color: #333;
-                                    padding: 40px;
-                                    border-radius: 15px;
-                                    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-                                }
-                                h1 { color: #e74c3c; margin-bottom: 20px; }
-                                a { 
-                                    display: inline-block; 
-                                    margin-top: 20px; 
-                                    padding: 12px 24px; 
-                                    background: #3498db; 
-                                    color: white; 
-                                    text-decoration: none; 
-                                    border-radius: 8px;
-                                    transition: all 0.3s ease;
-                                }
-                                a:hover { background: #2980b9; transform: translateY(-2px); }
-                            </style>
-                        </head>
-                        <body>
-                            <div class="container">
-                                <h1>❌ 404 - Файл не найден</h1>
-                                <p>Запрошенный файл не существует: <strong>${pathname}</strong></p>
-                                <p>Проверьте правильность URL или вернитесь на главную страницу</p>
-                                <a href="/">🏠 Вернуться на главную</a>
-                            </div>
-                        </body>
-                        </html>
-                    `);
+                    res.writeHead(404);
+                    res.end('Not Found');
                 }
             }
         } catch (error) {
@@ -345,6 +420,18 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(`📍 Сетевой доступ: http://${localIP}:${PORT}`);
     console.log(`📍 Админка: http://localhost:${PORT}/admin.html`);
     console.log(`🔐 Пароль админки: ${ADMIN_PASSWORD}`);
+    
+    const db = readDatabase();
+    console.log(`📊 Документов в базе: ${db.documents.length}`);
+    
+    let uploadsFiles = [];
+    try {
+        uploadsFiles = fs.readdirSync(UPLOADS_DIR);
+    } catch (error) {
+        console.log('📂 Папка uploads пуста');
+    }
+    console.log(`📂 Файлов в uploads: ${uploadsFiles.length}`);
+    
     console.log('🚀 Сервер успешно запущен!');
     console.log('==========================================');
 });
