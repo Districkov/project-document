@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 const FRONTEND_DIR = path.join(__dirname, 'frontend');
 const ADMIN_PASSWORD = "admin123";
