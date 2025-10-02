@@ -135,13 +135,14 @@ class DocumentViewer {
         `).join('');
     }
 
-    // Получение превью документа
+    // ИСПРАВЛЕННАЯ ФУНКЦИЯ - ТОЛЬКО ЭТУ ЧАСТЬ МЕНЯЕМ
     getDocumentPreview(doc) {
         const fileType = doc.type.toLowerCase();
         
         if (fileType === 'pdf') {
             return `
                 <div class="pdf-preview">
+                    <iframe src="${doc.url}" class="preview-iframe"></iframe>
                     <div class="preview-overlay">
                         <div class="pdf-icon">📄</div>
                     </div>

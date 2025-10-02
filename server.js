@@ -368,4 +368,4 @@ process.on('SIGINT', () => {
         console.log('✅ Сервер остановлен');
         process.exit(0);
     });
-});66
+});
