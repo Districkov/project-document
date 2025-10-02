@@ -128,7 +128,7 @@ function handleGetDocuments(req, res) {
     }
 }
 
-// ПРОСТАЯ ФУНКЦИЯ ЗАГРУЗКИ ДОКУМЕНТОВ - ПРИНИМАЕТ ТОЛЬКО JSON
+// ПРОСТАЯ ФУНКЦИЯ ДЛЯ ТЕСТА - СОЗДАЕТ ТЕКСТОВЫЙ ФАЙЛ
 function handleUploadDocument(req, res) {
     let body = '';
     
@@ -138,14 +138,14 @@ function handleUploadDocument(req, res) {
     
     req.on('end', () => {
         try {
-            console.log('📥 Получены данные:', body);
+            console.log('📥 Получены данные:', body.substring(0, 200) + '...'); // Логируем только начало
             
             let data;
             try {
                 data = JSON.parse(body || '{}');
             } catch (jsonError) {
                 console.log('⚠️ Невалидный JSON, создаем тестовый документ');
-                // Если пришел не JSON, создаем простой документ
+                // Если пришел не JSON (например, FormData), создаем простой документ
                 data = {
                     documentName: 'Документ ' + Date.now(),
                     documentCategory: 'general',
@@ -164,13 +164,19 @@ function handleUploadDocument(req, res) {
 
             const db = readDatabase();
             
-            // Создаем тестовый файл
-            const fileType = 'txt';
-            const filename = 'doc-' + Date.now() + '.txt';
+            // Определяем тип файла из оригинального имени
+            const fileExt = path.extname(originalName).toLowerCase() || '.txt';
+            const fileType = fileExt.substring(1); // убираем точку
+            
+            // Создаем уникальное имя файла
+            const filename = 'doc-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8) + fileExt;
             const filePath = path.join(UPLOADS_DIR, filename);
             
-            // Создаем простой текстовый файл
-            fs.writeFileSync(filePath, `Название: ${documentName}\nКатегория: ${documentCategory}\nДата: ${new Date().toISOString()}`);
+            // Создаем файл с содержимым
+            const fileContent = `Название: ${documentName}\nКатегория: ${documentCategory}\nОригинальное имя: ${originalName}\nДата загрузки: ${new Date().toISOString()}\n\nЭто тестовый файл, созданный сервером.`;
+            
+            fs.writeFileSync(filePath, fileContent, 'utf8');
+            console.log('✅ Файл создан в uploads:', filename);
 
             const newDocument = {
                 id: Date.now().toString(),
@@ -220,10 +226,12 @@ function handleDeleteDocument(req, res, documentId) {
             const filePath = path.join(UPLOADS_DIR, document.filename);
             if (fs.existsSync(filePath)) {
                 fs.unlinkSync(filePath);
-                console.log('✅ Файл удален:', document.filename);
+                console.log('✅ Файл удален из uploads:', document.filename);
+            } else {
+                console.log('⚠️ Файл не найден в uploads:', document.filename);
             }
         } catch (error) {
-            console.log('⚠️ Файл не найден, продолжаем удаление документа');
+            console.log('⚠️ Ошибка при удалении файла:', error.message);
         }
 
         db.documents.splice(documentIndex, 1);
@@ -250,7 +258,6 @@ function serveStaticFile(res, filePath) {
             
             res.writeHead(200, { 'Content-Type': contentType });
             res.end(content);
-            console.log('✅ Файл отправлен:', filePath);
             return true;
         }
         return false;
@@ -305,7 +312,7 @@ const server = http.createServer((req, res) => {
         const filename = pathname.replace('/uploads/', '');
         const filePath = path.join(UPLOADS_DIR, filename);
         
-        console.log('📂 Запрос файла:', filename);
+        console.log('📂 Запрос файла из uploads:', filename);
         
         try {
             if (fs.existsSync(filePath)) {
@@ -317,7 +324,7 @@ const server = http.createServer((req, res) => {
                 res.end(content);
                 console.log('✅ Файл отправлен:', filename);
             } else {
-                console.log('⚠️ Файл не найден, отдаем заглушку');
+                console.log('❌ Файл не найден в uploads:', filename);
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
                 res.end('File not found');
             }
@@ -363,37 +370,9 @@ const server = http.createServer((req, res) => {
         }
 
         if (!served) {
-            console.log('❌ Файл не найден после проверки всех путей:', pathname);
-            
-            // Простая страница с ошибкой
-            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-            res.end(`
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Document Viewer</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; margin: 40px; text-align: center; background: #f0f0f0; }
-                        .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; }
-                        .error { color: #e74c3c; }
-                        .info { color: #3498db; }
-                        a { color: #3498db; text-decoration: none; }
-                        a:hover { text-decoration: underline; }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <h1>📁 Document Viewer</h1>
-                        <p class="info">Сервер запущен и работает!</p>
-                        <p class="error">Файл не найден: ${pathname}</p>
-                        <p>
-                            <a href="/index.html">Главная страница</a> | 
-                            <a href="/admin.html">Админ-панель</a>
-                        </p>
-                    </div>
-                </body>
-                </html>
-            `);
+            console.log('❌ Файл не найден:', pathname);
+            res.writeHead(404);
+            res.end('Not found');
         }
         return;
     }
@@ -418,13 +397,17 @@ server.listen(PORT, '0.0.0.0', () => {
     const db = readDatabase();
     console.log(`📊 Документов в базе: ${db.documents.length}`);
     
+    // Показываем содержимое папки uploads
     let uploadsFiles = [];
     try {
         uploadsFiles = fs.readdirSync(UPLOADS_DIR);
+        console.log(`📂 Файлов в uploads: ${uploadsFiles.length}`);
+        if (uploadsFiles.length > 0) {
+            console.log('📄 Содержимое uploads:', uploadsFiles.join(', '));
+        }
     } catch (error) {
         console.log('📂 Папка uploads пуста');
     }
-    console.log(`📂 Файлов в uploads: ${uploadsFiles.length}`);
     
     console.log('🚀 Сервер готов к работе!');
     console.log('====================================');
