@@ -1,17 +1,8 @@
 {
-  "name": "document-viewer-backend",
+  "name": "document-viewer",
   "version": "1.0.0",
-  "description": "Backend for document viewer",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
-  },
-  "dependencies": {
-    "express": "^4.18.2",
-    "multer": "^1.4.5"
-  },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
+    "start": "node server.js"
   }
 }
