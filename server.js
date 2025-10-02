@@ -93,6 +93,56 @@ function sendSuccess(res, data = {}) {
     });
 }
 
+// Простой парсер multipart/form-data
+function parseMultipartFormData(buffer, contentType) {
+    const boundary = contentType.split('boundary=')[1];
+    if (!boundary) return null;
+
+    const parts = buffer.split('--' + boundary);
+    const result = {};
+
+    for (const part of parts) {
+        if (part.includes('Content-Disposition')) {
+            const lines = part.split('\r\n');
+            let name = null;
+            let filename = null;
+            let dataStart = -1;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                
+                if (line.includes('Content-Disposition')) {
+                    const nameMatch = line.match(/name="([^"]+)"/);
+                    if (nameMatch) name = nameMatch[1];
+                    
+                    const filenameMatch = line.match(/filename="([^"]+)"/);
+                    if (filenameMatch) filename = filenameMatch[1];
+                }
+                
+                if (line === '' && i + 1 < lines.length) {
+                    dataStart = i + 1;
+                    break;
+                }
+            }
+
+            if (name && dataStart !== -1) {
+                const data = lines.slice(dataStart, -1).join('\r\n');
+                if (filename) {
+                    result[name] = {
+                        filename: filename,
+                        data: Buffer.from(data, 'binary'),
+                        isFile: true
+                    };
+                } else {
+                    result[name] = data.trim();
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
 // API обработчики
 function handleAdminLogin(req, res) {
     let body = '';
@@ -128,55 +178,73 @@ function handleGetDocuments(req, res) {
     }
 }
 
-// ПРОСТАЯ ФУНКЦИЯ ДЛЯ ТЕСТА - СОЗДАЕТ ТЕКСТОВЫЙ ФАЙЛ
+// ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ С ПОДДЕРЖКОЙ ФАЙЛОВ
 function handleUploadDocument(req, res) {
-    let body = '';
-    
+    const contentType = req.headers['content-type'] || '';
+    const chunks = [];
+
     req.on('data', chunk => {
-        body += chunk.toString();
+        chunks.push(chunk);
     });
-    
+
     req.on('end', () => {
         try {
-            console.log('📥 Получены данные:', body.substring(0, 200) + '...'); // Логируем только начало
+            const buffer = Buffer.concat(chunks);
             
-            let data;
-            try {
-                data = JSON.parse(body || '{}');
-            } catch (jsonError) {
-                console.log('⚠️ Невалидный JSON, создаем тестовый документ');
-                // Если пришел не JSON (например, FormData), создаем простой документ
-                data = {
-                    documentName: 'Документ ' + Date.now(),
-                    documentCategory: 'general',
-                    originalName: 'document.txt'
-                };
+            let documentName, documentCategory, uploadedFile;
+
+            if (contentType.includes('multipart/form-data')) {
+                console.log('📤 Обработка multipart/form-data');
+                const formData = parseMultipartFormData(buffer, contentType);
+                
+                if (!formData) {
+                    throw new Error('Неверный формат form-data');
+                }
+
+                documentName = formData.documentName;
+                documentCategory = formData.documentCategory;
+                uploadedFile = formData.documentFile;
+                
+            } else {
+                // Для обратной совместимости с JSON
+                console.log('📤 Обработка JSON данных');
+                const data = JSON.parse(buffer.toString() || '{}');
+                documentName = data.documentName;
+                documentCategory = data.documentCategory;
             }
-            
-            const documentName = data.documentName || 'Документ ' + Date.now();
-            const documentCategory = data.documentCategory || 'general';
-            const originalName = data.originalName || 'document.txt';
 
             // Валидация
             if (!documentName) {
                 return sendError(res, 400, 'Не указано название документа');
             }
 
+            if (!documentCategory) {
+                documentCategory = 'general';
+            }
+
             const db = readDatabase();
-            
-            // Определяем тип файла из оригинального имени
-            const fileExt = path.extname(originalName).toLowerCase() || '.txt';
-            const fileType = fileExt.substring(1); // убираем точку
-            
-            // Создаем уникальное имя файла
-            const filename = 'doc-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8) + fileExt;
-            const filePath = path.join(UPLOADS_DIR, filename);
-            
-            // Создаем файл с содержимым
-            const fileContent = `Название: ${documentName}\nКатегория: ${documentCategory}\nОригинальное имя: ${originalName}\nДата загрузки: ${new Date().toISOString()}\n\nЭто тестовый файл, созданный сервером.`;
-            
-            fs.writeFileSync(filePath, fileContent, 'utf8');
-            console.log('✅ Файл создан в uploads:', filename);
+            let filename, fileType, originalName;
+
+            if (uploadedFile && uploadedFile.isFile) {
+                // Сохраняем реальный файл
+                originalName = uploadedFile.filename;
+                fileType = path.extname(originalName).toLowerCase().substring(1) || 'file';
+                filename = 'doc-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8) + path.extname(originalName);
+                const filePath = path.join(UPLOADS_DIR, filename);
+                
+                // Сохраняем файл с реальными данными
+                fs.writeFileSync(filePath, uploadedFile.data);
+                console.log('✅ Реальный файл сохранен в uploads:', filename, 'Размер:', uploadedFile.data.length, 'байт');
+
+            } else {
+                // Создаем тестовый файл (для обратной совместимости)
+                originalName = 'document.txt';
+                fileType = 'txt';
+                filename = 'doc-' + Date.now() + '.txt';
+                const filePath = path.join(UPLOADS_DIR, filename);
+                fs.writeFileSync(filePath, 'Это тестовый файл, созданный сервером');
+                console.log('✅ Тестовый файл создан в uploads:', filename);
+            }
 
             const newDocument = {
                 id: Date.now().toString(),
@@ -316,13 +384,17 @@ const server = http.createServer((req, res) => {
         
         try {
             if (fs.existsSync(filePath)) {
+                const stats = fs.statSync(filePath);
                 const content = fs.readFileSync(filePath);
                 const ext = path.extname(filePath).toLowerCase();
                 const contentType = getContentType(ext);
                 
-                res.writeHead(200, { 'Content-Type': contentType });
+                res.writeHead(200, { 
+                    'Content-Type': contentType,
+                    'Content-Length': stats.size
+                });
                 res.end(content);
-                console.log('✅ Файл отправлен:', filename);
+                console.log('✅ Файл отправлен:', filename, 'Размер:', stats.size, 'байт');
             } else {
                 console.log('❌ Файл не найден в uploads:', filename);
                 res.writeHead(404, { 'Content-Type': 'text/plain' });
@@ -403,7 +475,12 @@ server.listen(PORT, '0.0.0.0', () => {
         uploadsFiles = fs.readdirSync(UPLOADS_DIR);
         console.log(`📂 Файлов в uploads: ${uploadsFiles.length}`);
         if (uploadsFiles.length > 0) {
-            console.log('📄 Содержимое uploads:', uploadsFiles.join(', '));
+            console.log('📄 Содержимое uploads:');
+            uploadsFiles.forEach(file => {
+                const filePath = path.join(UPLOADS_DIR, file);
+                const stats = fs.statSync(filePath);
+                console.log(`   - ${file} (${stats.size} байт)`);
+            });
         }
     } catch (error) {
         console.log('📂 Папка uploads пуста');
