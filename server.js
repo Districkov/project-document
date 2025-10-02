@@ -2,20 +2,16 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { StringDecoder } = require('string_decoder');
 
 const PORT = process.env.PORT || 10000;
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
-const FRONTEND_DIR = path.join(__dirname, 'frontend');
 const ADMIN_PASSWORD = "admin123";
 
 // Создаем необходимые папки
 if (!fs.existsSync(UPLOADS_DIR)) {
     fs.mkdirSync(UPLOADS_DIR, { recursive: true });
     console.log('✅ Папка uploads создана');
-}
-
-if (!fs.existsSync(FRONTEND_DIR)) {
-    console.log('❌ Папка frontend не найдена! Создайте папку frontend с HTML файлами');
 }
 
 const DB_PATH = path.join(__dirname, 'database.json');
@@ -97,6 +93,60 @@ function sendSuccess(res, data = {}) {
     });
 }
 
+// Функция для парсинга multipart/form-data
+function parseMultipartFormData(body, contentType) {
+    const boundary = contentType.split('boundary=')[1];
+    if (!boundary) return null;
+
+    const parts = body.split('--' + boundary);
+    const result = {};
+
+    for (const part of parts) {
+        if (part.includes('Content-Disposition')) {
+            const lines = part.split('\r\n');
+            let name = null;
+            let value = '';
+            let isFile = false;
+            let filename = null;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                
+                if (line.includes('Content-Disposition')) {
+                    const nameMatch = line.match(/name="([^"]+)"/);
+                    if (nameMatch) name = nameMatch[1];
+                    
+                    const filenameMatch = line.match(/filename="([^"]+)"/);
+                    if (filenameMatch) {
+                        isFile = true;
+                        filename = filenameMatch[1];
+                    }
+                }
+                
+                if (line === '' && i + 1 < lines.length) {
+                    // Это начало данных
+                    value = lines.slice(i + 1, -1).join('\r\n');
+                    break;
+                }
+            }
+
+            if (name) {
+                if (isFile && filename) {
+                    result[name] = {
+                        filename: filename,
+                        data: value,
+                        isFile: true
+                    };
+                } else {
+                    result[name] = value.trim();
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
 // API обработчики
 function handleAdminLogin(req, res) {
     let body = '';
@@ -132,26 +182,81 @@ function handleGetDocuments(req, res) {
     }
 }
 
+// ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ДОКУМЕНТОВ
 function handleUploadDocument(req, res) {
+    const contentType = req.headers['content-type'] || '';
     let body = '';
-    
+
     req.on('data', chunk => {
-        body += chunk.toString();
+        body += chunk.toString('binary');
     });
-    
+
     req.on('end', () => {
         try {
-            const data = JSON.parse(body || '{}');
+            let documentName, documentCategory, uploadedFile;
+
+            if (contentType.includes('multipart/form-data')) {
+                // Обработка multipart/form-data (загрузка файлов)
+                console.log('📤 Обработка multipart/form-data');
+                const formData = parseMultipartFormData(body, contentType);
+                
+                if (!formData) {
+                    throw new Error('Неверный формат form-data');
+                }
+
+                documentName = formData.documentName;
+                documentCategory = formData.documentCategory;
+                
+                if (formData.documentFile && formData.documentFile.isFile) {
+                    uploadedFile = formData.documentFile;
+                }
+            } else {
+                // Обработка JSON (для обратной совместимости)
+                console.log('📤 Обработка JSON данных');
+                const data = JSON.parse(body || '{}');
+                documentName = data.documentName;
+                documentCategory = data.documentCategory;
+            }
+
+            // Валидация
+            if (!documentName) {
+                return sendError(res, 400, 'Не указано название документа');
+            }
+
+            if (!documentCategory) {
+                documentCategory = 'general';
+            }
+
             const db = readDatabase();
-            
+            let filename, fileType, originalName;
+
+            if (uploadedFile) {
+                // Сохраняем загруженный файл
+                originalName = uploadedFile.filename;
+                fileType = path.extname(originalName).toLowerCase().substring(1) || 'file';
+                filename = 'doc-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15) + path.extname(originalName);
+                const filePath = path.join(UPLOADS_DIR, filename);
+                
+                // Сохраняем файл
+                fs.writeFileSync(filePath, uploadedFile.data, 'binary');
+                console.log('✅ Файл сохранен:', filename);
+            } else {
+                // Создаем тестовый файл (для обратной совместимости)
+                originalName = 'document.txt';
+                fileType = 'txt';
+                filename = 'doc-' + Date.now() + '.txt';
+                const filePath = path.join(UPLOADS_DIR, filename);
+                fs.writeFileSync(filePath, 'Это тестовый документ');
+            }
+
             const newDocument = {
                 id: Date.now().toString(),
-                name: data.documentName || 'Документ ' + Date.now(),
-                originalName: data.originalName || 'document',
-                filename: 'doc-' + Date.now() + '.txt',
-                type: 'file',
-                category: data.documentCategory || 'general',
-                url: '/uploads/doc-' + Date.now() + '.txt',
+                name: documentName,
+                originalName: originalName,
+                filename: filename,
+                type: fileType,
+                category: documentCategory,
+                url: '/uploads/' + filename,
                 uploadDate: new Date().toISOString(),
                 isNew: true
             };
@@ -160,18 +265,24 @@ function handleUploadDocument(req, res) {
             const writeSuccess = writeDatabase(db);
 
             if (writeSuccess) {
+                console.log('✅ Документ добавлен в базу:', newDocument.name);
                 sendSuccess(res, { 
                     document: newDocument,
-                    message: 'Документ добавлен'
+                    message: 'Документ успешно загружен'
                 });
             } else {
-                throw new Error('Failed to save to database');
+                throw new Error('Ошибка сохранения в базу данных');
             }
             
         } catch (error) {
-            console.error('❌ Ошибка загрузки:', error);
+            console.error('❌ Ошибка загрузки документа:', error);
             sendError(res, 500, error.message);
         }
+    });
+
+    req.on('error', (error) => {
+        console.error('❌ Ошибка при получении данных:', error);
+        sendError(res, 500, 'Ошибка при получении данных');
     });
 }
 
@@ -203,7 +314,7 @@ function handleDeleteDocument(req, res, documentId) {
         if (writeSuccess) {
             sendSuccess(res, { message: 'Документ удален' });
         } else {
-            throw new Error('Failed to update database');
+            throw new Error('Ошибка обновления базы данных');
         }
     } catch (error) {
         console.error('❌ Ошибка удаления:', error);
@@ -286,14 +397,16 @@ const server = http.createServer((req, res) => {
         let filePath;
         
         // Определяем путь к файлу
-        if (pathname === '/') {
-            filePath = path.join(FRONTEND_DIR, 'index.html');
+        if (pathname === '/' || pathname === '/index.html') {
+            filePath = path.join(__dirname, 'index.html');
         } else if (pathname === '/admin.html') {
-            filePath = path.join(FRONTEND_DIR, 'admin.html');
+            filePath = path.join(__dirname, 'admin.html');
+        } else if (pathname === '/documents.html') {
+            filePath = path.join(__dirname, 'documents.html');
         } else {
             // Для CSS, JS и других файлов
             const filename = pathname.startsWith('/') ? pathname.slice(1) : pathname;
-            filePath = path.join(FRONTEND_DIR, filename);
+            filePath = path.join(__dirname, filename);
         }
         
         console.log('📁 Поиск файла:', filePath);
@@ -310,7 +423,7 @@ const server = http.createServer((req, res) => {
             } else {
                 console.log('❌ Файл не найден:', filePath);
                 
-                // Если фронтенд не загружен, показываем информационную страницу
+                // Если файл не найден, показываем информационную страницу
                 res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
                 res.end(`
                     <!DOCTYPE html>
@@ -329,13 +442,12 @@ const server = http.createServer((req, res) => {
                             <h1>📁 Document Viewer</h1>
                             <p class="info">Сервер запущен и работает!</p>
                             <p class="error">Файл не найден: ${pathname}</p>
-                            <p>Проверьте:</p>
+                            <p>Доступные страницы:</p>
                             <ul style="text-align: left; display: inline-block;">
-                                <li>Существует ли папка <strong>frontend</strong></li>
-                                <li>Находится ли файл в папке frontend</li>
-                                <li>Правильность названия файла</li>
+                                <li><a href="/">Главная страница</a></li>
+                                <li><a href="/admin.html">Админ-панель</a></li>
+                                <li><a href="/documents.html">Просмотр документа</a></li>
                             </ul>
-                            <p><a href="/">На главную</a> | <a href="/admin.html">В админку</a></p>
                         </div>
                     </body>
                     </html>
