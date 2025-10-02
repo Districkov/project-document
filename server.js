@@ -6,12 +6,20 @@ const { StringDecoder } = require('string_decoder');
 
 const PORT = process.env.PORT || 10000;
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
+const FRONTEND_DIR = path.join(__dirname, 'frontend'); // Папка с фронтендом
 const ADMIN_PASSWORD = "admin123";
 
 // Создаем необходимые папки
 if (!fs.existsSync(UPLOADS_DIR)) {
     fs.mkdirSync(UPLOADS_DIR, { recursive: true });
     console.log('✅ Папка uploads создана');
+}
+
+// Проверяем существование папки frontend
+if (!fs.existsSync(FRONTEND_DIR)) {
+    console.log('❌ Папка frontend не найдена!');
+} else {
+    console.log('✅ Папка frontend найдена');
 }
 
 const DB_PATH = path.join(__dirname, 'database.json');
@@ -322,6 +330,26 @@ function handleDeleteDocument(req, res, documentId) {
     }
 }
 
+// ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ СТАТИЧЕСКИХ ФАЙЛОВ
+function serveStaticFile(res, filePath) {
+    try {
+        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+            const content = fs.readFileSync(filePath);
+            const ext = path.extname(filePath).toLowerCase();
+            const contentType = getContentType(ext);
+            
+            res.writeHead(200, { 'Content-Type': contentType });
+            res.end(content);
+            console.log('✅ Файл отправлен:', filePath);
+            return true;
+        }
+        return false;
+    } catch (error) {
+        console.log('❌ Ошибка чтения файла:', error);
+        return false;
+    }
+}
+
 // Основной обработчик сервера
 const server = http.createServer((req, res) => {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -380,9 +408,8 @@ const server = http.createServer((req, res) => {
                 console.log('✅ Файл отправлен:', filename);
             } else {
                 console.log('⚠️ Файл не найден, отдаем заглушку');
-                // Возвращаем простой текст вместо ошибки
-                res.writeHead(200, { 'Content-Type': 'text/plain' });
-                res.end('Файл не найден');
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('File not found');
             }
         } catch (error) {
             console.log('❌ Ошибка чтения файла:', error);
@@ -392,71 +419,87 @@ const server = http.createServer((req, res) => {
         return;
     }
     
-    // Статические файлы фронтенда
+    // Статические файлы фронтенда - ИСПРАВЛЕННЫЕ ПУТИ
     if (req.method === 'GET') {
         let filePath;
-        
-        // Определяем путь к файлу
-        if (pathname === '/' || pathname === '/index.html') {
-            filePath = path.join(__dirname, 'index.html');
-        } else if (pathname === '/admin.html') {
-            filePath = path.join(__dirname, 'admin.html');
-        } else if (pathname === '/documents.html') {
-            filePath = path.join(__dirname, 'documents.html');
+        let served = false;
+
+        // Основной путь - ищем в папке frontend
+        if (pathname === '/') {
+            filePath = path.join(FRONTEND_DIR, 'index.html');
         } else {
-            // Для CSS, JS и других файлов
-            const filename = pathname.startsWith('/') ? pathname.slice(1) : pathname;
-            filePath = path.join(__dirname, filename);
+            filePath = path.join(FRONTEND_DIR, pathname.slice(1));
         }
-        
-        console.log('📁 Поиск файла:', filePath);
-        
-        try {
-            if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-                const content = fs.readFileSync(filePath);
-                const ext = path.extname(filePath).toLowerCase();
-                const contentType = getContentType(ext);
-                
-                res.writeHead(200, { 'Content-Type': contentType });
-                res.end(content);
-                console.log('✅ Файл отправлен:', pathname);
-            } else {
-                console.log('❌ Файл не найден:', filePath);
-                
-                // Если файл не найден, показываем информационную страницу
-                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-                res.end(`
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                        <title>Document Viewer</title>
-                        <style>
-                            body { font-family: Arial, sans-serif; margin: 40px; text-align: center; background: #f0f0f0; }
-                            .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; }
-                            .error { color: #e74c3c; }
-                            .info { color: #3498db; }
-                        </style>
-                    </head>
-                    <body>
-                        <div class="container">
-                            <h1>📁 Document Viewer</h1>
-                            <p class="info">Сервер запущен и работает!</p>
-                            <p class="error">Файл не найден: ${pathname}</p>
-                            <p>Доступные страницы:</p>
-                            <ul style="text-align: left; display: inline-block;">
-                                <li><a href="/">Главная страница</a></li>
-                                <li><a href="/admin.html">Админ-панель</a></li>
-                                <li><a href="/documents.html">Просмотр документа</a></li>
-                            </ul>
-                        </div>
-                    </body>
-                    </html>
-                `);
+
+        // Пробуем основной путь
+        if (serveStaticFile(res, filePath)) {
+            served = true;
+        } else {
+            // Если не нашли, пробуем альтернативные пути
+            const alternativePaths = [
+                path.join(__dirname, pathname === '/' ? 'index.html' : pathname.slice(1)),
+                path.join(__dirname, 'frontend', pathname === '/' ? 'index.html' : pathname.slice(1)),
+                path.join(FRONTEND_DIR, 'index.html'),
+                path.join(FRONTEND_DIR, 'admin.html'),
+                path.join(__dirname, 'index.html'),
+                path.join(__dirname, 'admin.html')
+            ];
+
+            for (const tryPath of alternativePaths) {
+                if (serveStaticFile(res, tryPath)) {
+                    served = true;
+                    break;
+                }
             }
-        } catch (error) {
-            console.log('❌ Ошибка чтения файла:', error);
-            res.writeHead(500);
-            res.end('Internal Server Error');
+        }
+
+        if (!served) {
+            console.log('❌ Файл не найден после проверки всех путей:', pathname);
+            
+            // Показываем список доступных файлов в frontend
+            let frontendFiles = [];
+            try {
+                frontendFiles = fs.readdirSync(FRONTEND_DIR).filter(file => 
+                    file.endsWith('.html') || file.endsWith('.css') || file.endsWith('.js')
+                );
+            } catch (error) {
+                console.log('❌ Не удалось прочитать папку frontend');
+            }
+            
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+            res.end(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Document Viewer</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; margin: 40px; text-align: center; background: #f0f0f0; }
+                        .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; }
+                        .error { color: #e74c3c; }
+                        .info { color: #3498db; }
+                        ul { text-align: left; display: inline-block; }
+                        a { color: #3498db; text-decoration: none; }
+                        a:hover { text-decoration: underline; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h1>📁 Document Viewer</h1>
+                        <p class="info">Сервер запущен и работает!</p>
+                        <p class="error">Файл не найден: ${pathname}</p>
+                        <p>Доступные файлы в папке frontend:</p>
+                        <ul>
+                            ${frontendFiles.map(file => `<li><a href="/${file}">${file}</a></li>`).join('')}
+                        </ul>
+                        <p style="margin-top: 20px;">
+                            <strong>Основные страницы:</strong><br>
+                            <a href="/index.html">Главная страница</a> | 
+                            <a href="/admin.html">Админ-панель</a>
+                        </p>
+                    </div>
+                </body>
+                </html>
+            `);
         }
         return;
     }
@@ -477,6 +520,15 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(`📍 Сетевой доступ: http://${localIP}:${PORT}`);
     console.log(`📍 Админка: http://localhost:${PORT}/admin.html`);
     console.log(`🔐 Пароль админки: ${ADMIN_PASSWORD}`);
+    
+    // Показываем доступные HTML файлы в frontend
+    let frontendFiles = [];
+    try {
+        frontendFiles = fs.readdirSync(FRONTEND_DIR).filter(file => file.endsWith('.html'));
+        console.log(`📄 HTML файлы в frontend: ${frontendFiles.join(', ')}`);
+    } catch (error) {
+        console.log('❌ Не удалось прочитать папку frontend');
+    }
     
     const db = readDatabase();
     console.log(`📊 Документов в базе: ${db.documents.length}`);
