@@ -1,8 +1,13 @@
 {
   "name": "document-viewer",
   "version": "1.0.0",
+  "description": "Система управления документами",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
-  }
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["documents", "manager", "express"],
+  "author": "Document System",
+  "license": "MIT"
 }

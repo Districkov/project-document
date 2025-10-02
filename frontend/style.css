@@ -1,13 +1,31 @@
+/* Reset и базовые стили */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+:root {
+    --primary-color: #3498db;
+    --primary-dark: #2980b9;
+    --secondary-color: #2c3e50;
+    --accent-color: #e74c3c;
+    --success-color: #27ae60;
+    --warning-color: #f39c12;
+    --light-bg: #f8f9fa;
+    --border-color: #e9ecef;
+    --text-color: #333;
+    --text-light: #7f8c8d;
+    --shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    --shadow-hover: 0 15px 35px rgba(0, 0, 0, 0.15);
+    --border-radius: 12px;
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #333;
+    color: var(--text-color);
     line-height: 1.6;
     min-height: 100vh;
     padding: 20px;
@@ -18,139 +36,295 @@ body {
     margin: 0 auto;
 }
 
+/* Header */
 header {
     text-align: center;
     margin-bottom: 40px;
-    padding: 30px;
+    padding: 40px;
     background: rgba(255, 255, 255, 0.95);
-    border-radius: 20px;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow);
     position: relative;
 }
 
 h1 {
-    color: #2c3e50;
+    color: var(--secondary-color);
     font-size: 2.5rem;
     margin-bottom: 10px;
+    font-weight: 700;
 }
 
 .subtitle {
-    color: #7f8c8d;
+    color: var(--text-light);
     font-size: 1.2rem;
+    font-weight: 400;
 }
 
+/* Кнопки */
 .admin-link {
     position: absolute;
     top: 20px;
     right: 20px;
-    background: #3498db;
+    background: var(--primary-color);
     color: white;
-    padding: 10px 20px;
+    padding: 12px 24px;
     border-radius: 8px;
     text-decoration: none;
-    font-weight: 500;
-    transition: background 0.3s ease;
+    font-weight: 600;
+    transition: var(--transition);
+    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
 }
 
 .admin-link:hover {
-    background: #2980b9;
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
 }
 
 .back-btn {
     position: absolute;
     top: 20px;
     left: 20px;
-    background: #6c757d;
+    background: var(--text-light);
     color: white;
-    padding: 10px 20px;
+    padding: 12px 24px;
     border-radius: 8px;
     text-decoration: none;
-    font-weight: 500;
-    transition: background 0.3s ease;
+    font-weight: 600;
+    transition: var(--transition);
 }
 
 .back-btn:hover {
     background: #5a6268;
+    transform: translateY(-2px);
 }
 
-/* Стили для превью документов */
-.documents-preview {
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+}
+
+.btn-login, .btn-upload {
+    width: 100%;
+    margin-top: 10px;
+}
+
+/* Поиск */
+.search-section {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.search-input {
+    width: 100%;
+    max-width: 500px;
+    padding: 15px 25px;
+    border: 2px solid var(--border-color);
+    border-radius: 50px;
+    font-size: 1.1rem;
+    outline: none;
+    transition: var(--transition);
+    box-shadow: var(--shadow);
+}
+
+.search-input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* Сетка документов */
+.documents-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 25px;
     margin-bottom: 40px;
 }
 
-.preview-card {
+.document-card {
     background: white;
-    border-radius: 15px;
-    padding: 20px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    border-radius: var(--border-radius);
+    padding: 0;
+    box-shadow: var(--shadow);
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: var(--transition);
     border: 3px solid transparent;
-    text-align: center;
+    overflow: hidden;
     position: relative;
 }
 
-.preview-card:hover {
+.document-card:hover {
     transform: translateY(-8px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-    border-color: #3498db;
+    box-shadow: var(--shadow-hover);
+    border-color: var(--primary-color);
 }
 
-.preview-icon {
-    font-size: 48px;
-    margin-bottom: 15px;
-    height: 80px;
+.preview-content {
+    height: 160px;
+    background: var(--light-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.preview-thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.preview-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    pointer-events: none;
+}
+
+.pdf-preview {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.preview-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(52, 152, 219, 0.1);
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.preview-title {
+.pdf-icon {
+    font-size: 2.5rem;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 15px;
+    border-radius: 50%;
+    box-shadow: var(--shadow);
+}
+
+.preview-icon-large {
+    font-size: 3.5rem;
+    opacity: 0.7;
+}
+
+.document-info {
+    padding: 20px;
+}
+
+.document-name {
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--secondary-color);
+    margin-bottom: 8px;
+    font-size: 1.1rem;
     line-height: 1.4;
-    font-size: 1rem;
     word-break: break-word;
 }
 
-.preview-meta {
-    font-size: 0.8rem;
-    color: #7f8c8d;
-    margin-top: 8px;
+.document-meta {
+    color: var(--text-light);
+    font-size: 0.9rem;
+    margin-bottom: 15px;
 }
 
+.document-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-view, .btn-delete {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+    font-size: 0.9rem;
+}
+
+.btn-view {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-view:hover {
+    background: var(--primary-dark);
+}
+
+.btn-delete {
+    background: var(--accent-color);
+    color: white;
+}
+
+.btn-delete:hover {
+    background: #c0392b;
+}
+
+/* Бейдж NEW */
 .preview-badge {
     position: absolute;
     top: 10px;
     right: 10px;
-    background: #e74c3c;
+    background: var(--accent-color);
     color: white;
-    padding: 4px 8px;
-    border-radius: 12px;
+    padding: 5px 10px;
+    border-radius: 15px;
     font-size: 0.7rem;
-    font-weight: 600;
+    font-weight: 700;
+    z-index: 2;
 }
 
 /* Админ-панель */
-.admin-panel {
+.admin-section {
     background: rgba(255, 255, 255, 0.95);
-    border-radius: 20px;
-    padding: 30px;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+    border-radius: var(--border-radius);
+    padding: 40px;
+    box-shadow: var(--shadow);
+    margin-bottom: 30px;
+}
+
+.login-card {
+    max-width: 400px;
+    margin: 0 auto;
+    text-align: center;
 }
 
 .upload-section {
     margin-bottom: 40px;
     padding-bottom: 30px;
-    border-bottom: 2px solid #e9ecef;
+    border-bottom: 2px solid var(--border-color);
 }
 
 .upload-form {
     max-width: 600px;
     margin: 0 auto;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
 }
 
 .form-group {
@@ -161,61 +335,75 @@ h1 {
     display: block;
     margin-bottom: 8px;
     font-weight: 600;
-    color: #2c3e50;
+    color: var(--secondary-color);
 }
 
 .form-group input,
 .form-group select {
     width: 100%;
     padding: 12px 15px;
-    border: 2px solid #e9ecef;
+    border: 2px solid var(--border-color);
     border-radius: 8px;
     font-size: 1rem;
-    transition: border-color 0.3s ease;
+    transition: var(--transition);
+    background: white;
 }
 
 .form-group input:focus,
 .form-group select:focus {
     outline: none;
-    border-color: #3498db;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
 }
 
 .form-group small {
-    color: #7f8c8d;
+    color: var(--text-light);
     font-size: 0.85rem;
+    display: block;
+    margin-top: 5px;
 }
 
-.btn-primary {
-    background: linear-gradient(135deg, #3498db, #2980b9);
+/* Секция документов в админке */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.documents-count {
+    background: var(--primary-color);
     color: white;
-    border: none;
-    padding: 15px 30px;
-    border-radius: 8px;
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    width: 100%;
-}
-
-.btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
-}
-
-.btn-danger {
-    background: #e74c3c;
-    color: white;
-    border: none;
     padding: 8px 15px;
-    border-radius: 5px;
-    cursor: pointer;
+    border-radius: 20px;
     font-size: 0.9rem;
-    transition: background 0.3s ease;
+    font-weight: 600;
 }
 
-.btn-danger:hover {
-    background: #c0392b;
+/* Empty state */
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: var(--border-radius);
+    display: none;
+}
+
+.empty-icon {
+    font-size: 80px;
+    margin-bottom: 20px;
+    opacity: 0.7;
+}
+
+.empty-state h3 {
+    color: var(--secondary-color);
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+}
+
+.empty-state p {
+    color: var(--text-light);
+    margin-bottom: 25px;
 }
 
 /* Модальное окно */
@@ -228,11 +416,12 @@ h1 {
     height: 100%;
     background: rgba(0, 0, 0, 0.9);
     z-index: 1000;
+    animation: fadeIn 0.3s ease;
 }
 
 .modal-content {
     background: white;
-    border-radius: 20px;
+    border-radius: var(--border-radius);
     width: 95%;
     max-width: 1000px;
     max-height: 90vh;
@@ -241,6 +430,7 @@ h1 {
     flex-direction: column;
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
     overflow: hidden;
+    animation: slideIn 0.3s ease;
 }
 
 .modal-header {
@@ -248,31 +438,66 @@ h1 {
     justify-content: space-between;
     align-items: center;
     padding: 20px 25px;
-    border-bottom: 1px solid #e9ecef;
-    background: #f8f9fa;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--light-bg);
+    flex-wrap: wrap;
+    gap: 15px;
 }
 
 .modal-header h2 {
-    color: #2c3e50;
+    color: var(--secondary-color);
     font-size: 1.3rem;
     font-weight: 600;
     margin: 0;
     flex: 1;
-    margin-right: 20px;
     word-break: break-word;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.btn-download, .btn-fullscreen {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.btn-download {
+    background: var(--success-color);
+    color: white;
+}
+
+.btn-download:hover {
+    background: #219a52;
+}
+
+.btn-fullscreen {
+    background: var(--warning-color);
+    color: white;
+}
+
+.btn-fullscreen:hover {
+    background: #e67e22;
 }
 
 .close {
     font-size: 28px;
     font-weight: bold;
-    color: #7f8c8d;
+    color: var(--text-light);
     cursor: pointer;
     padding: 0 10px;
-    transition: color 0.3s ease;
+    transition: var(--transition);
 }
 
 .close:hover {
-    color: #e74c3c;
+    color: var(--accent-color);
 }
 
 .document-viewer {
@@ -304,171 +529,12 @@ h1 {
     justify-content: center;
     align-items: center;
     height: 300px;
-    color: #7f8c8d;
+    color: var(--text-light);
     text-align: center;
     padding: 40px;
 }
 
-.empty-state {
-    text-align: center;
-    padding: 80px 20px;
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 20px;
-    display: none;
-}
-
-.empty-icon {
-    font-size: 80px;
-    margin-bottom: 20px;
-}
-
-.empty-state h3 {
-    color: #2c3e50;
-    font-size: 1.5rem;
-    margin-bottom: 10px;
-}
-
-/* Дополнительные стили для превью */
-.preview-content {
-    height: 150px;
-    margin-bottom: 15px;
-    border-radius: 10px;
-    overflow: hidden;
-    position: relative;
-    background: #f8f9fa;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.preview-thumbnail {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 8px;
-}
-
-.preview-iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-    pointer-events: none;
-}
-
-.pdf-preview {
-    width: 100%;
-    height: 100%;
-    position: relative;
-}
-
-.preview-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(52, 152, 219, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.pdf-icon {
-    font-size: 2rem;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 10px;
-    border-radius: 50%;
-}
-
-/* Адаптивность */
-@media (max-width: 768px) {
-    .documents-preview {
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 15px;
-    }
-    
-    header {
-        padding: 20px;
-    }
-    
-    h1 {
-        font-size: 2rem;
-    }
-    
-    .admin-link, .back-btn {
-        position: static;
-        display: inline-block;
-        margin: 10px 5px;
-    }
-}
-
-@media (max-width: 480px) {
-    body {
-        padding: 10px;
-    }
-    
-    .documents-preview {
-        grid-template-columns: 1fr;
-    }
-}
-/* Стили для превью документов в карточках */
-.preview-content {
-    height: 150px;
-    margin-bottom: 15px;
-    border-radius: 10px;
-    overflow: hidden;
-    position: relative;
-    background: #f8f9fa;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.preview-thumbnail {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 8px;
-}
-
-.preview-iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-    pointer-events: none;
-}
-
-.pdf-preview {
-    width: 100%;
-    height: 100%;
-    position: relative;
-}
-
-.preview-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(52, 152, 219, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.pdf-icon {
-    font-size: 2rem;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 10px;
-    border-radius: 50%;
-}
-
-.preview-icon-large {
-    font-size: 3rem;
-    opacity: 0.7;
-}
-
-/* Стили для модального окна на весь экран */
+/* Полноэкранный режим */
 .modal-fullscreen .modal-content {
     width: 100%;
     height: 100vh;
@@ -490,115 +556,7 @@ h1 {
     max-height: calc(100vh - 80px);
 }
 
-/* Стили для админ-карточек */
-.document-card {
-    background: white;
-    border-radius: 15px;
-    padding: 20px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
-    border: 2px solid transparent;
-}
-
-.document-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
-    border-color: #3498db;
-}
-
-.document-name {
-    font-weight: 600;
-    color: #2c3e50;
-    margin-bottom: 8px;
-    font-size: 1.1rem;
-}
-
-.document-meta {
-    color: #7f8c8d;
-    font-size: 0.9rem;
-}
-
-.documents-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 25px;
-    margin-top: 20px;
-}
-
-/* Кнопка полноэкранного режима */
-.fullscreen-btn {
-    background: #27ae60;
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    margin-left: 10px;
-    transition: background 0.3s ease;
-}
-
-.fullscreen-btn:hover {
-    background: #219a52;
-}
-/* Добавить в конец style.css */
-
-/* Стили для кнопки скачивания */
-.download-btn {
-    background: #27ae60;
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    transition: background 0.3s ease;
-}
-
-.download-btn:hover {
-    background: #219a52;
-}
-
-/* Улучшенные стили для заголовка модального окна */
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 25px;
-    border-bottom: 1px solid #e9ecef;
-    background: #f8f9fa;
-    flex-wrap: wrap;
-    gap: 15px;
-}
-
-.modal-header h2 {
-    color: #2c3e50;
-    font-size: 1.3rem;
-    font-weight: 600;
-    margin: 0;
-    flex: 1;
-    margin-right: 20px;
-    word-break: break-word;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 15px;
-}
-
 /* Анимации */
-.preview-card {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.modal {
-    animation: fadeIn 0.3s ease;
-}
-
-.modal-content {
-    animation: slideIn 0.3s ease;
-}
-
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -615,85 +573,56 @@ h1 {
     }
 }
 
-/* Загрузочный индикатор */
-.loading {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid #3498db;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-/* Уведомления */
-.notification {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    padding: 15px 20px;
-    border-radius: 8px;
-    color: white;
-    font-weight: 500;
-    z-index: 1001;
-    animation: slideInRight 0.3s ease;
-}
-
-.notification.success {
-    background: #27ae60;
-}
-
-.notification.error {
-    background: #e74c3c;
-}
-
-.notification.info {
-    background: #3498db;
-}
-
-@keyframes slideInRight {
-    from {
-        transform: translateX(100%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-/* Адаптивность для мобильных устройств */
+/* Адаптивность */
 @media (max-width: 768px) {
-    .modal-header h2 {
+    body {
+        padding: 10px;
+    }
+    
+    .documents-grid {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 15px;
+    }
+    
+    header {
+        padding: 20px;
+    }
+    
+    h1 {
+        font-size: 2rem;
+    }
+    
+    .admin-link, .back-btn {
+        position: static;
+        display: inline-block;
+        margin: 10px 5px;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .modal-header {
         flex-direction: column;
         align-items: flex-start;
     }
     
-    .modal-header {
-        padding: 15px;
-    }
-    
-    .fullscreen-btn,
-    .download-btn {
-        padding: 6px 12px;
-        font-size: 0.8rem;
-    }
-    
-    .document-viewer {
-        min-height: 400px;
-    }
-    
-    .document-iframe {
-        min-height: 400px;
+    .modal-actions {
+        width: 100%;
+        justify-content: flex-end;
+        margin-top: 10px;
     }
 }
 
 @media (max-width: 480px) {
+    .documents-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .admin-section {
+        padding: 20px;
+    }
+    
     .modal-content {
         width: 100%;
         height: 100vh;
@@ -704,21 +633,23 @@ h1 {
     .modal-header h2 {
         font-size: 1.1rem;
     }
-    
-    .preview-card {
-        padding: 15px;
-    }
-    
-    .preview-icon {
-        font-size: 36px;
-        height: 60px;
-    }
 }
 
-/* Темная тема для модального окна */
+/* Улучшенная доступность */
+.preview-card:focus,
+.btn-primary:focus,
+.btn-view:focus,
+.btn-delete:focus,
+.btn-download:focus,
+.btn-fullscreen:focus {
+    outline: 3px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+/* Темная тема (опционально) */
 @media (prefers-color-scheme: dark) {
     .modal-content {
-        background: #2c3e50;
+        background: var(--secondary-color);
         color: white;
     }
     
@@ -738,238 +669,4 @@ h1 {
     .close:hover {
         color: #ecf0f1;
     }
-}
-
-/* Улучшенная доступность */
-.preview-card:focus {
-    outline: 3px solid #3498db;
-    outline-offset: 2px;
-}
-
-.btn-primary:focus,
-.fullscreen-btn:focus,
-.download-btn:focus {
-    outline: 3px solid #3498db;
-    outline-offset: 2px;
-}
-
-/* Высокий контраст для доступности */
-@media (prefers-contrast: high) {
-    .preview-card {
-        border: 2px solid #000;
-    }
-    
-    .btn-primary {
-        border: 2px solid #000;
-    }
-}
-/* Стили для кнопок действий в админке */
-.document-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 15px;
-}
-
-.btn-view {
-    flex: 1;
-    padding: 8px;
-    background: #3498db;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background 0.3s ease;
-}
-
-.btn-view:hover {
-    background: #2980b9;
-}
-
-.btn-delete {
-    flex: 1;
-    padding: 8px;
-    background: #e74c3c;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background 0.3s ease;
-}
-
-.btn-delete:hover {
-    background: #c0392b;
-}
-
-/* Стили для кнопки скачивания */
-.download-btn {
-    background: #27ae60;
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    transition: background 0.3s ease;
-}
-
-.download-btn:hover {
-    background: #219a52;
-}
-
-/* Модальное окно на весь экран */
-.modal-fullscreen .modal-content {
-    width: 100%;
-    height: 100vh;
-    max-width: none;
-    max-height: none;
-    margin: 0;
-    border-radius: 0;
-}
-
-.modal-fullscreen .document-viewer {
-    min-height: calc(100vh - 80px);
-}
-
-.modal-fullscreen .document-iframe {
-    min-height: calc(100vh - 80px);
-}
-
-.modal-fullscreen .document-image {
-    max-height: calc(100vh - 80px);
-}
-
-/* Улучшенный заголовок модального окна */
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 20px 25px;
-    border-bottom: 1px solid #e9ecef;
-    background: #f8f9fa;
-    flex-wrap: wrap;
-    gap: 15px;
-}
-
-.modal-header h2 {
-    color: #2c3e50;
-    font-size: 1.3rem;
-    font-weight: 600;
-    margin: 0;
-    flex: 1;
-    margin-right: 20px;
-    word-break: break-word;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 15px;
-}
-/* Стили для превью документов с содержимым */
-.preview-content {
-    height: 150px;
-    margin-bottom: 15px;
-    border-radius: 10px;
-    overflow: hidden;
-    position: relative;
-    background: #f8f9fa;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.preview-thumbnail {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 8px;
-}
-
-.preview-iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-    pointer-events: none;
-}
-
-.pdf-preview {
-    width: 100%;
-    height: 100%;
-    position: relative;
-}
-
-.preview-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(52, 152, 219, 0.1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.pdf-icon {
-    font-size: 2rem;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 10px;
-    border-radius: 50%;
-}
-
-.preview-icon-large {
-    font-size: 3rem;
-    opacity: 0.7;
-}
-
-/* Стили для модального окна на весь экран */
-.modal-fullscreen .modal-content {
-    width: 100%;
-    height: 100vh;
-    max-width: none;
-    max-height: none;
-    margin: 0;
-    border-radius: 0;
-}
-
-.modal-fullscreen .document-viewer {
-    min-height: calc(100vh - 80px);
-}
-
-.modal-fullscreen .document-iframe {
-    min-height: calc(100vh - 80px);
-}
-
-.modal-fullscreen .document-image {
-    max-height: calc(100vh - 80px);
-}
-
-/* Кнопки в модальном окне */
-.fullscreen-btn {
-    background: #27ae60;
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    transition: background 0.3s ease;
-}
-
-.fullscreen-btn:hover {
-    background: #219a52;
-}
-
-.download-btn {
-    background: #3498db;
-    color: white;
-    border: none;
-    padding: 8px 15px;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 0.9rem;
-    transition: background 0.3s ease;
-}
-
-.download-btn:hover {
-    background: #2980b9;
 }

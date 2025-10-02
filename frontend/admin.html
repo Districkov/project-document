@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Админ-панель - Документы</title>
+    <title>Админ-панель - Управление документами</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,63 +11,79 @@
         <header>
             <a href="index.html" class="back-btn">← Назад к документам</a>
             <h1>⚙️ Админ-панель</h1>
-            <p class="subtitle">Управление документами</p>
+            <p class="subtitle">Управление документами системы</p>
         </header>
 
-        <!-- Форма входа -->
-        <div id="loginSection" class="admin-panel">
-            <div class="upload-section">
-                <h2>🔐 Вход в админ-панель</h2>
-                <form id="loginForm" class="upload-form">
-                    <div class="form-group">
-                        <label for="adminPassword">Пароль:</label>
-                        <input type="password" id="adminPassword" required placeholder="Введите пароль">
-                        <small>Пароль по умолчанию: admin123</small>
-                    </div>
-                    <button type="submit" class="btn-primary">🔓 Войти</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- Контент админки (скрыт до входа) -->
-        <div id="adminContent" class="admin-panel" style="display: none;">
-            <!-- Форма загрузки нового документа -->
-            <div class="upload-section">
-                <h2>📤 Загрузить новый документ</h2>
-                <form id="uploadForm" class="upload-form">
-                    <div class="form-group">
-                        <label for="documentName">Название документа:</label>
-                        <input type="text" id="documentName" required placeholder="Введите название документа">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="documentFile">Выберите файл:</label>
-                        <input type="file" id="documentFile" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.ppt,.pptx" required>
-                        <small>Поддерживаемые форматы: PDF, DOC, DOCX, JPG, PNG, PPT, PPTX</small>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="documentCategory">Категория:</label>
-                        <select id="documentCategory">
-                            <option value="general">Общие документы</option>
-                            <option value="contracts">Договоры</option>
-                            <option value="reports">Отчеты</option>
-                            <option value="presentations">Презентации</option>
-                        </select>
-                    </div>
-
-                    <button type="submit" class="btn-primary">📁 Загрузить документ</button>
-                </form>
-            </div>
-
-            <!-- Список существующих документов -->
-            <div class="documents-list">
-                <h2>📋 Загруженные документы</h2>
-                <div id="documentsList" class="documents-grid">
-                    <!-- Список документов -->
+        <main>
+            <!-- Форма входа -->
+            <div id="loginSection" class="admin-section">
+                <div class="login-card">
+                    <h2>🔐 Вход в админ-панель</h2>
+                    <form id="loginForm" class="login-form">
+                        <div class="form-group">
+                            <label for="adminPassword">Пароль администратора:</label>
+                            <input type="password" id="adminPassword" required 
+                                   placeholder="Введите пароль для доступа">
+                            <small>Пароль по умолчанию: <strong>admin123</strong></small>
+                        </div>
+                        <button type="submit" class="btn-primary btn-login">
+                            🔓 Войти в систему
+                        </button>
+                    </form>
                 </div>
             </div>
-        </div>
+
+            <!-- Контент админки (после входа) -->
+            <div id="adminContent" class="admin-section" style="display: none;">
+                <!-- Форма загрузки документа -->
+                <div class="upload-section">
+                    <h2>📤 Загрузить новый документ</h2>
+                    <form id="uploadForm" class="upload-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="documentName">Название документа:</label>
+                                <input type="text" id="documentName" required 
+                                       placeholder="Введите понятное название документа">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="documentCategory">Категория:</label>
+                                <select id="documentCategory" required>
+                                    <option value="general">📄 Общие документы</option>
+                                    <option value="contracts">📝 Договоры</option>
+                                    <option value="reports">📊 Отчеты</option>
+                                    <option value="presentations">🎯 Презентации</option>
+                                    <option value="instructions">📖 Инструкции</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="documentFile">Выберите файл:</label>
+                            <input type="file" id="documentFile" 
+                                   accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.ppt,.pptx,.txt" required>
+                            <small>Поддерживаемые форматы: PDF, DOC/DOCX, JPG/PNG, PPT/PPTX, TXT</small>
+                        </div>
+
+                        <button type="submit" class="btn-primary btn-upload">
+                            📁 Загрузить документ
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Список документов -->
+                <div class="documents-section">
+                    <div class="section-header">
+                        <h2>📋 Загруженные документы</h2>
+                        <span class="documents-count" id="documentsCount">0 документов</span>
+                    </div>
+                    
+                    <div id="documentsList" class="documents-list">
+                        <!-- Список документов будет загружен здесь -->
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
 
     <script src="admin.js"></script>
