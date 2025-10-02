@@ -5,6 +5,7 @@ const path = require('path');
 const PORT = 3000;
 const UPLOADS_DIR = './uploads';
 const FRONTEND_DIR = '../frontend';
+const ADMIN_PASSWORD = "admin123"; // Пароль для админки
 
 // Создаем папки если нет
 if (!fs.existsSync(UPLOADS_DIR)) {
@@ -38,6 +39,27 @@ function writeDatabase(data) {
         console.log('❌ Ошибка записи в базу данных:', error);
         return false;
     }
+}
+
+// API: Проверка пароля админки
+function handleAdminLogin(req, res) {
+    let body = '';
+    req.on('data', chunk => body += chunk);
+    req.on('end', () => {
+        try {
+            const { password } = JSON.parse(body);
+            if (password === ADMIN_PASSWORD) {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true }));
+            } else {
+                res.writeHead(401, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: 'Неверный пароль' }));
+            }
+        } catch (error) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ success: false, error: 'Ошибка сервера' }));
+        }
+    });
 }
 
 // Функция для обработки JSON загрузки
@@ -250,6 +272,12 @@ const server = http.createServer((req, res) => {
         return;
     }
 
+    // API: Проверка пароля админки
+    if (pathname === '/api/admin/login' && req.method === 'POST') {
+        handleAdminLogin(req, res);
+        return;
+    }
+
     // API: Получить документы
     if (pathname === '/api/documents' && req.method === 'GET') {
         try {
@@ -409,6 +437,7 @@ server.listen(PORT, () => {
     console.log('=== 📁 ДОКУМЕНТЫ ЗАПУЩЕНЫ ===');
     console.log(`🌐 Сайт: http://localhost:${PORT}`);
     console.log(`⚙️ Админка: http://localhost:${PORT}/admin.html`);
+    console.log(`🔐 Пароль админки: ${ADMIN_PASSWORD}`);
     
     const db = readDatabase();
     console.log(`📊 Документов в базе: ${db.documents.length}`);

@@ -411,3 +411,565 @@ h1 {
         grid-template-columns: 1fr;
     }
 }
+/* Стили для превью документов в карточках */
+.preview-content {
+    height: 150px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    background: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.preview-thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.preview-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    pointer-events: none;
+}
+
+.pdf-preview {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.preview-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(52, 152, 219, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pdf-icon {
+    font-size: 2rem;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 10px;
+    border-radius: 50%;
+}
+
+.preview-icon-large {
+    font-size: 3rem;
+    opacity: 0.7;
+}
+
+/* Стили для модального окна на весь экран */
+.modal-fullscreen .modal-content {
+    width: 100%;
+    height: 100vh;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+}
+
+.modal-fullscreen .document-viewer {
+    min-height: calc(100vh - 80px);
+}
+
+.modal-fullscreen .document-iframe {
+    min-height: calc(100vh - 80px);
+}
+
+.modal-fullscreen .document-image {
+    max-height: calc(100vh - 80px);
+}
+
+/* Стили для админ-карточек */
+.document-card {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.document-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+    border-color: #3498db;
+}
+
+.document-name {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+}
+
+.document-meta {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+.documents-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 25px;
+    margin-top: 20px;
+}
+
+/* Кнопка полноэкранного режима */
+.fullscreen-btn {
+    background: #27ae60;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-left: 10px;
+    transition: background 0.3s ease;
+}
+
+.fullscreen-btn:hover {
+    background: #219a52;
+}
+/* Добавить в конец style.css */
+
+/* Стили для кнопки скачивания */
+.download-btn {
+    background: #27ae60;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.3s ease;
+}
+
+.download-btn:hover {
+    background: #219a52;
+}
+
+/* Улучшенные стили для заголовка модального окна */
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-bottom: 1px solid #e9ecef;
+    background: #f8f9fa;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.modal-header h2 {
+    color: #2c3e50;
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0;
+    flex: 1;
+    margin-right: 20px;
+    word-break: break-word;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+/* Анимации */
+.preview-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modal {
+    animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes slideIn {
+    from { 
+        opacity: 0;
+        transform: translateY(-50px) scale(0.9);
+    }
+    to { 
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Загрузочный индикатор */
+.loading {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Уведомления */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    color: white;
+    font-weight: 500;
+    z-index: 1001;
+    animation: slideInRight 0.3s ease;
+}
+
+.notification.success {
+    background: #27ae60;
+}
+
+.notification.error {
+    background: #e74c3c;
+}
+
+.notification.info {
+    background: #3498db;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+    .modal-header h2 {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .modal-header {
+        padding: 15px;
+    }
+    
+    .fullscreen-btn,
+    .download-btn {
+        padding: 6px 12px;
+        font-size: 0.8rem;
+    }
+    
+    .document-viewer {
+        min-height: 400px;
+    }
+    
+    .document-iframe {
+        min-height: 400px;
+    }
+}
+
+@media (max-width: 480px) {
+    .modal-content {
+        width: 100%;
+        height: 100vh;
+        margin: 0;
+        border-radius: 0;
+    }
+    
+    .modal-header h2 {
+        font-size: 1.1rem;
+    }
+    
+    .preview-card {
+        padding: 15px;
+    }
+    
+    .preview-icon {
+        font-size: 36px;
+        height: 60px;
+    }
+}
+
+/* Темная тема для модального окна */
+@media (prefers-color-scheme: dark) {
+    .modal-content {
+        background: #2c3e50;
+        color: white;
+    }
+    
+    .modal-header {
+        background: #34495e;
+        border-bottom-color: #4a5f7a;
+    }
+    
+    .modal-header h2 {
+        color: white;
+    }
+    
+    .close {
+        color: #bdc3c7;
+    }
+    
+    .close:hover {
+        color: #ecf0f1;
+    }
+}
+
+/* Улучшенная доступность */
+.preview-card:focus {
+    outline: 3px solid #3498db;
+    outline-offset: 2px;
+}
+
+.btn-primary:focus,
+.fullscreen-btn:focus,
+.download-btn:focus {
+    outline: 3px solid #3498db;
+    outline-offset: 2px;
+}
+
+/* Высокий контраст для доступности */
+@media (prefers-contrast: high) {
+    .preview-card {
+        border: 2px solid #000;
+    }
+    
+    .btn-primary {
+        border: 2px solid #000;
+    }
+}
+/* Стили для кнопок действий в админке */
+.document-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.btn-view {
+    flex: 1;
+    padding: 8px;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.btn-view:hover {
+    background: #2980b9;
+}
+
+.btn-delete {
+    flex: 1;
+    padding: 8px;
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.btn-delete:hover {
+    background: #c0392b;
+}
+
+/* Стили для кнопки скачивания */
+.download-btn {
+    background: #27ae60;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.3s ease;
+}
+
+.download-btn:hover {
+    background: #219a52;
+}
+
+/* Модальное окно на весь экран */
+.modal-fullscreen .modal-content {
+    width: 100%;
+    height: 100vh;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+}
+
+.modal-fullscreen .document-viewer {
+    min-height: calc(100vh - 80px);
+}
+
+.modal-fullscreen .document-iframe {
+    min-height: calc(100vh - 80px);
+}
+
+.modal-fullscreen .document-image {
+    max-height: calc(100vh - 80px);
+}
+
+/* Улучшенный заголовок модального окна */
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-bottom: 1px solid #e9ecef;
+    background: #f8f9fa;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.modal-header h2 {
+    color: #2c3e50;
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0;
+    flex: 1;
+    margin-right: 20px;
+    word-break: break-word;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+/* Стили для превью документов с содержимым */
+.preview-content {
+    height: 150px;
+    margin-bottom: 15px;
+    border-radius: 10px;
+    overflow: hidden;
+    position: relative;
+    background: #f8f9fa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.preview-thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.preview-iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    pointer-events: none;
+}
+
+.pdf-preview {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.preview-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(52, 152, 219, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pdf-icon {
+    font-size: 2rem;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 10px;
+    border-radius: 50%;
+}
+
+.preview-icon-large {
+    font-size: 3rem;
+    opacity: 0.7;
+}
+
+/* Стили для модального окна на весь экран */
+.modal-fullscreen .modal-content {
+    width: 100%;
+    height: 100vh;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    border-radius: 0;
+}
+
+.modal-fullscreen .document-viewer {
+    min-height: calc(100vh - 80px);
+}
+
+.modal-fullscreen .document-iframe {
+    min-height: calc(100vh - 80px);
+}
+
+.modal-fullscreen .document-image {
+    max-height: calc(100vh - 80px);
+}
+
+/* Кнопки в модальном окне */
+.fullscreen-btn {
+    background: #27ae60;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.3s ease;
+}
+
+.fullscreen-btn:hover {
+    background: #219a52;
+}
+
+.download-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.3s ease;
+}
+
+.download-btn:hover {
+    background: #2980b9;
+}

@@ -1,7 +1,12 @@
 let documents = [];
+let isAuthenticated = false;
 
 // DOM элементы
 const elements = {
+    loginSection: document.getElementById('loginSection'),
+    adminContent: document.getElementById('adminContent'),
+    loginForm: document.getElementById('loginForm'),
+    adminPassword: document.getElementById('adminPassword'),
     uploadForm: document.getElementById('uploadForm'),
     documentName: document.getElementById('documentName'),
     documentFile: document.getElementById('documentFile'),
@@ -9,32 +14,102 @@ const elements = {
     documentsList: document.getElementById('documentsList')
 };
 
-// Инициализация админ-панели
+// Инициализация
 async function initAdmin() {
     setupEventListeners();
-    await loadDocumentsList();
+    checkAuth();
 }
 
-// Настройка обработчиков событий
+// Проверка авторизации
+function checkAuth() {
+    const savedAuth = localStorage.getItem('adminAuthenticated');
+    if (savedAuth === 'true') {
+        isAuthenticated = true;
+        showAdminContent();
+    } else {
+        showLoginForm();
+    }
+}
+
+// Показать форму входа
+function showLoginForm() {
+    elements.loginSection.style.display = 'block';
+    elements.adminContent.style.display = 'none';
+    isAuthenticated = false;
+}
+
+// Показать контент админки
+function showAdminContent() {
+    elements.loginSection.style.display = 'none';
+    elements.adminContent.style.display = 'block';
+    isAuthenticated = true;
+    loadDocuments();
+}
+
+// Настройка обработчиков
 function setupEventListeners() {
-    elements.uploadForm.addEventListener('submit', handleFileUpload);
+    elements.loginForm.addEventListener('submit', handleLogin);
+    if (elements.uploadForm) {
+        elements.uploadForm.addEventListener('submit', handleFileUpload);
+    }
+    
+    // Автозаполнение имени файла
+    elements.documentFile.addEventListener('change', function(e) {
+        if (e.target.files.length > 0 && !elements.documentName.value) {
+            const fileName = e.target.files[0].name;
+            // Убираем расширение файла
+            const nameWithoutExt = fileName.replace(/\.[^/.]+$/, "");
+            elements.documentName.value = nameWithoutExt;
+        }
+    });
 }
 
-// Загрузка списка документов
-async function loadDocumentsList() {
+// Обработка входа
+async function handleLogin(e) {
+    e.preventDefault();
+    
+    const password = elements.adminPassword.value;
+
     try {
-        console.log('🔄 Загрузка списка документов...');
-        const response = await fetch('/api/documents');
-        
+        const response = await fetch('/api/admin/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ password })
+        });
+
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error('Ошибка сети');
         }
-        
+
+        const result = await response.json();
+
+        if (result.success) {
+            localStorage.setItem('adminAuthenticated', 'true');
+            isAuthenticated = true;
+            showAdminContent();
+        } else {
+            alert('❌ Неверный пароль!');
+            elements.adminPassword.value = '';
+        }
+    } catch (error) {
+        console.error('❌ Ошибка входа:', error);
+        alert('❌ Ошибка при входе. Проверьте подключение к серверу.');
+    }
+}
+
+// Загрузка документов
+async function loadDocuments() {
+    if (!isAuthenticated) return;
+    
+    try {
+        const response = await fetch('/api/documents');
+        if (!response.ok) throw new Error('Ошибка загрузки');
         documents = await response.json();
-        console.log(`✅ Загружено ${documents.length} документов`);
         renderDocumentsList();
     } catch (error) {
-        console.error('❌ Ошибка загрузки документов:', error);
+        console.error('Ошибка загрузки документов:', error);
         documents = [];
         renderDocumentsList();
     }
@@ -42,77 +117,72 @@ async function loadDocumentsList() {
 
 // Отображение списка документов
 function renderDocumentsList() {
+    if (!isAuthenticated) return;
+    
     if (documents.length === 0) {
         elements.documentsList.innerHTML = `
-            <div style="text-align: center; color: #7f8c8d; padding: 40px;">
-                <div style="font-size: 48px; margin-bottom: 20px;">📂</div>
+            <div class="empty-state">
+                <div class="empty-icon">📂</div>
                 <h3>Нет загруженных документов</h3>
-                <p>Нажмите "Загрузить документ" чтобы добавить первый документ</p>
+                <p>Загрузите первый документ</p>
             </div>
         `;
         return;
     }
     
     elements.documentsList.innerHTML = documents.map(doc => `
-        <div class="preview-card">
-            <div class="preview-icon">${getDocumentIcon(doc.type)}</div>
-            <div class="preview-title">${escapeHtml(doc.name)}</div>
-            <div class="preview-meta">
-                ${doc.category} • ${new Date(doc.uploadDate).toLocaleDateString('ru-RU')}
+        <div class="document-card">
+            <div class="preview-content">
+                ${getDocumentPreview(doc)}
             </div>
-            <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button onclick="previewDocument('${doc.id}')" 
-                        style="flex: 1; padding: 8px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                    👁️ Просмотр
-                </button>
-                <button onclick="deleteDocument('${doc.id}')" 
-                        style="flex: 1; padding: 8px; background: #e74c3c; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                    🗑️ Удалить
-                </button>
+            <div class="document-info">
+                <div class="document-name">${escapeHtml(doc.name)}</div>
+                <div class="document-meta">
+                    ${getCategoryName(doc.category)} • ${new Date(doc.uploadDate).toLocaleDateString('ru-RU')}
+                </div>
+                <div class="document-actions">
+                    <button onclick="previewDocument('${doc.id}')" class="btn-view">
+                        👁️ Просмотр
+                    </button>
+                    <button onclick="confirmDelete('${doc.id}')" class="btn-delete">
+                        🗑️ Удалить
+                    </button>
+                </div>
             </div>
         </div>
     `).join('');
 }
 
-// Обработка загрузки файла
-async function handleFileUpload(e) {
-    e.preventDefault();
-    
-    const name = elements.documentName.value.trim() || 'Документ ' + new Date().toLocaleDateString();
-    const file = elements.documentFile.files[0];
-    const category = elements.documentCategory.value;
-
-    if (!file) {
-        alert('❌ Пожалуйста, выберите файл');
-        return;
+// Получение превью документа
+function getDocumentPreview(doc) {
+    if (doc.type === 'pdf') {
+        return `
+            <div class="pdf-preview">
+                <iframe src="${doc.url}" class="preview-iframe"></iframe>
+                <div class="preview-overlay">
+                    <div class="pdf-icon">📄</div>
+                </div>
+            </div>
+        `;
+    } else if (['jpg', 'jpeg', 'png'].includes(doc.type)) {
+        return `<img src="${doc.url}" alt="${doc.name}" class="preview-thumbnail" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <div class="preview-icon-large" style="display: none;">${getDocumentIcon(doc.type)}</div>`;
+    } else {
+        return `
+            <div class="preview-icon-large">${getDocumentIcon(doc.type)}</div>
+        `;
     }
+}
 
-    try {
-        console.log('📤 Отправка файла на сервер...');
-        
-        const formData = new FormData();
-        formData.append('documentName', name);
-        formData.append('documentCategory', category);
-        formData.append('file', file);
-
-        const response = await fetch('/api/documents', {
-            method: 'POST',
-            body: formData
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-            alert('✅ ' + (result.message || 'Документ успешно загружен!'));
-            elements.uploadForm.reset();
-            await loadDocumentsList();
-        } else {
-            alert('❌ Ошибка: ' + result.error);
-        }
-    } catch (error) {
-        console.error('❌ Ошибка:', error);
-        alert('❌ Ошибка при загрузке документа: ' + error.message);
-    }
+// Получение названия категории
+function getCategoryName(category) {
+    const categories = {
+        'general': 'Общие документы',
+        'contracts': 'Договоры',
+        'reports': 'Отчеты',
+        'presentations': 'Презентации'
+    };
+    return categories[category] || category;
 }
 
 // Получение иконки для типа файла
@@ -131,34 +201,104 @@ function getDocumentIcon(type) {
     return icons[type] || '📁';
 }
 
+// Загрузка файла
+async function handleFileUpload(e) {
+    e.preventDefault();
+    
+    if (!isAuthenticated) {
+        alert('❌ Необходимо войти в систему');
+        return;
+    }
+    
+    const name = elements.documentName.value.trim();
+    const file = elements.documentFile.files[0];
+    const category = elements.documentCategory.value;
+
+    if (!file) {
+        alert('❌ Пожалуйста, выберите файл');
+        return;
+    }
+
+    if (!name) {
+        alert('❌ Пожалуйста, введите название документа');
+        return;
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('documentName', name);
+        formData.append('documentCategory', category);
+        formData.append('documentFile', file);
+
+        const response = await fetch('/api/documents', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error('Ошибка загрузки');
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert('✅ Документ успешно загружен!');
+            elements.uploadForm.reset();
+            await loadDocuments();
+        } else {
+            alert('❌ Ошибка: ' + (result.error || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        console.error('❌ Ошибка:', error);
+        alert('❌ Ошибка при загрузке документа. Проверьте подключение к серверу.');
+    }
+}
+
 // Просмотр документа
 function previewDocument(docId) {
     const doc = documents.find(d => d.id === docId);
+    if (doc) {
+        window.open(doc.url, '_blank');
+    }
+}
+
+// Подтверждение удаления
+function confirmDelete(docId) {
+    const doc = documents.find(d => d.id === docId);
     if (!doc) return;
     
-    window.open(doc.url, '_blank');
+    if (confirm(`Вы уверены, что хотите удалить документ "${doc.name}"?`)) {
+        deleteDocument(docId);
+    }
 }
 
 // Удаление документа
 async function deleteDocument(docId) {
-    if (confirm('Вы уверены, что хотите удалить этот документ?')) {
-        try {
-            const response = await fetch(`/api/documents/${docId}`, {
-                method: 'DELETE'
-            });
+    if (!isAuthenticated) {
+        alert('❌ Необходимо войти в систему');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/documents/${docId}`, {
+            method: 'DELETE'
+        });
 
-            const result = await response.json();
-
-            if (result.success) {
-                alert('✅ Документ удален!');
-                await loadDocumentsList();
-            } else {
-                alert('❌ Ошибка при удалении');
-            }
-        } catch (error) {
-            console.error('❌ Ошибка:', error);
-            alert('❌ Ошибка при удалении документа');
+        if (!response.ok) {
+            throw new Error('Ошибка удаления');
         }
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert('✅ Документ удален!');
+            await loadDocuments();
+        } else {
+            alert('❌ Ошибка при удалении');
+        }
+    } catch (error) {
+        console.error('❌ Ошибка:', error);
+        alert('❌ Ошибка при удалении документа');
     }
 }
 
@@ -172,5 +312,5 @@ function escapeHtml(unsafe) {
         .replace(/'/g, "&#039;");
 }
 
-// Инициализация админ-панели
+// Инициализация
 document.addEventListener('DOMContentLoaded', initAdmin);
