@@ -280,7 +280,7 @@ class AdminPanel {
         return categories[category] || category;
     }
 
-    // Загрузка файла
+    // ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ФАЙЛОВ
     async handleFileUpload(e) {
         e.preventDefault();
         
@@ -317,6 +317,7 @@ class AdminPanel {
         submitBtn.disabled = true;
 
         try {
+            // Используем FormData для отправки файла
             const formData = new FormData();
             formData.append('documentName', name);
             formData.append('documentCategory', category);
@@ -324,8 +325,12 @@ class AdminPanel {
 
             const response = await fetch(`${this.apiBase}/documents`, {
                 method: 'POST',
-                body: formData
+                body: formData // НЕ указываем Content-Type, браузер сам установит с boundary
             });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
 
             const result = await response.json();
 
