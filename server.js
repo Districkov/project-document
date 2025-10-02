@@ -15,8 +15,7 @@ if (!fs.existsSync(UPLOADS_DIR)) {
 }
 
 if (!fs.existsSync(FRONTEND_DIR)) {
-    fs.mkdirSync(FRONTEND_DIR, { recursive: true });
-    console.log('✅ Папка frontend создана');
+    console.log('❌ Папка frontend не найдена! Создайте папку frontend с HTML файлами');
 }
 
 const DB_PATH = path.join(__dirname, 'database.json');
@@ -116,6 +115,7 @@ function handleAdminLogin(req, res) {
                 sendError(res, 401, 'Неверный пароль');
             }
         } catch (error) {
+            console.error('❌ Ошибка входа:', error);
             sendError(res, 400, 'Неверный формат данных');
         }
     });
@@ -124,8 +124,10 @@ function handleAdminLogin(req, res) {
 function handleGetDocuments(req, res) {
     try {
         const db = readDatabase();
+        console.log('📊 Отправляем документы:', db.documents.length);
         sendSuccess(res, { documents: db.documents });
     } catch (error) {
+        console.error('❌ Ошибка получения документов:', error);
         sendError(res, 500, 'Ошибка получения документов');
     }
 }
@@ -139,33 +141,36 @@ function handleUploadDocument(req, res) {
     
     req.on('end', () => {
         try {
-            const data = JSON.parse(body);
+            const data = JSON.parse(body || '{}');
             const db = readDatabase();
             
             const newDocument = {
                 id: Date.now().toString(),
-                name: data.documentName || `Документ ${Date.now()}`,
+                name: data.documentName || 'Документ ' + Date.now(),
                 originalName: data.originalName || 'document',
-                filename: `doc-${Date.now()}.txt`,
-                type: data.fileType || 'file',
+                filename: 'doc-' + Date.now() + '.txt',
+                type: 'file',
                 category: data.documentCategory || 'general',
-                url: `/api/documents/${Date.now()}`,
+                url: '/uploads/doc-' + Date.now() + '.txt',
                 uploadDate: new Date().toISOString(),
                 isNew: true
             };
-            
+
             db.documents.unshift(newDocument);
-            
-            if (writeDatabase(db)) {
+            const writeSuccess = writeDatabase(db);
+
+            if (writeSuccess) {
                 sendSuccess(res, { 
                     document: newDocument,
-                    message: 'Документ успешно загружен'
+                    message: 'Документ добавлен'
                 });
             } else {
-                throw new Error('Ошибка сохранения в базу данных');
+                throw new Error('Failed to save to database');
             }
+            
         } catch (error) {
-            sendError(res, 500, 'Ошибка загрузки документа');
+            console.error('❌ Ошибка загрузки:', error);
+            sendError(res, 500, error.message);
         }
     });
 }
@@ -178,16 +183,31 @@ function handleDeleteDocument(req, res, documentId) {
         if (documentIndex === -1) {
             return sendError(res, 404, 'Документ не найден');
         }
+
+        const document = db.documents[documentIndex];
         
+        // Пытаемся удалить файл если он существует
+        try {
+            const filePath = path.join(UPLOADS_DIR, document.filename);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+                console.log('✅ Файл удален:', document.filename);
+            }
+        } catch (error) {
+            console.log('⚠️ Файл не найден, продолжаем удаление документа');
+        }
+
         db.documents.splice(documentIndex, 1);
-        
-        if (writeDatabase(db)) {
+        const writeSuccess = writeDatabase(db);
+
+        if (writeSuccess) {
             sendSuccess(res, { message: 'Документ удален' });
         } else {
-            throw new Error('Ошибка сохранения в базу данных');
+            throw new Error('Failed to update database');
         }
     } catch (error) {
-        sendError(res, 500, 'Ошибка удаления документа');
+        console.error('❌ Ошибка удаления:', error);
+        sendError(res, 500, error.message);
     }
 }
 
@@ -231,57 +251,106 @@ const server = http.createServer((req, res) => {
         return;
     }
     
-    // Статические файлы из папки frontend
-if (req.method === 'GET') {
-    let filePath;
-    
-    // Убираем начальный слэш для создания корректного пути
-    const relativePath = pathname === '/' ? 'index.html' : pathname.slice(1);
-    filePath = path.join(FRONTEND_DIR, relativePath);
-    
-    console.log(`📁 Поиск файла: ${filePath}`);
-    
-    try {
-        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-            const content = fs.readFileSync(filePath);
-            const ext = path.extname(filePath).toLowerCase();
-            const contentType = getContentType(ext);
-            
-            res.writeHead(200, { 'Content-Type': contentType });
-            res.end(content);
-            console.log(`✅ Файл отправлен: ${pathname}`);
-        } else {
-            console.log(`❌ Файл не найден: ${filePath}`);
-            
-            // Для HTML файлов возвращаем index.html (SPA)
-            if (pathname === '/' || pathname === '/admin.html' || pathname.endsWith('.html')) {
-                const indexFile = path.join(FRONTEND_DIR, pathname === '/admin.html' ? 'admin.html' : 'index.html');
-                if (fs.existsSync(indexFile)) {
-                    const content = fs.readFileSync(indexFile);
-                    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-                    res.end(content);
-                    console.log(`✅ Отправлен HTML для: ${pathname}`);
-                } else {
-                    res.writeHead(404);
-                    res.end('Not Found');
-                }
+    // Обслуживание загруженных файлов
+    if (pathname.startsWith('/uploads/') && req.method === 'GET') {
+        const filename = pathname.replace('/uploads/', '');
+        const filePath = path.join(UPLOADS_DIR, filename);
+        
+        console.log('📂 Запрос файла:', filename);
+        
+        try {
+            if (fs.existsSync(filePath)) {
+                const content = fs.readFileSync(filePath);
+                const ext = path.extname(filePath).toLowerCase();
+                const contentType = getContentType(ext);
+                
+                res.writeHead(200, { 'Content-Type': contentType });
+                res.end(content);
+                console.log('✅ Файл отправлен:', filename);
             } else {
-                // Для остальных файлов - 404
-                res.writeHead(404);
-                res.end('Not Found');
+                console.log('⚠️ Файл не найден, отдаем заглушку');
+                // Возвращаем простой текст вместо ошибки
+                res.writeHead(200, { 'Content-Type': 'text/plain' });
+                res.end('Файл не найден');
             }
+        } catch (error) {
+            console.log('❌ Ошибка чтения файла:', error);
+            res.writeHead(404);
+            res.end('File not found');
         }
-    } catch (error) {
-        console.log('❌ Ошибка чтения файла:', error);
-        res.writeHead(500);
-        res.end('Internal Server Error');
+        return;
     }
-    return;
-}
     
-    // 404 для всех остальных запросов
+    // Статические файлы фронтенда
+    if (req.method === 'GET') {
+        let filePath;
+        
+        // Определяем путь к файлу
+        if (pathname === '/') {
+            filePath = path.join(FRONTEND_DIR, 'index.html');
+        } else if (pathname === '/admin.html') {
+            filePath = path.join(FRONTEND_DIR, 'admin.html');
+        } else {
+            // Для CSS, JS и других файлов
+            const filename = pathname.startsWith('/') ? pathname.slice(1) : pathname;
+            filePath = path.join(FRONTEND_DIR, filename);
+        }
+        
+        console.log('📁 Поиск файла:', filePath);
+        
+        try {
+            if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+                const content = fs.readFileSync(filePath);
+                const ext = path.extname(filePath).toLowerCase();
+                const contentType = getContentType(ext);
+                
+                res.writeHead(200, { 'Content-Type': contentType });
+                res.end(content);
+                console.log('✅ Файл отправлен:', pathname);
+            } else {
+                console.log('❌ Файл не найден:', filePath);
+                
+                // Если фронтенд не загружен, показываем информационную страницу
+                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+                res.end(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>Document Viewer</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; margin: 40px; text-align: center; background: #f0f0f0; }
+                            .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; }
+                            .error { color: #e74c3c; }
+                            .info { color: #3498db; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <h1>📁 Document Viewer</h1>
+                            <p class="info">Сервер запущен и работает!</p>
+                            <p class="error">Файл не найден: ${pathname}</p>
+                            <p>Проверьте:</p>
+                            <ul style="text-align: left; display: inline-block;">
+                                <li>Существует ли папка <strong>frontend</strong></li>
+                                <li>Находится ли файл в папке frontend</li>
+                                <li>Правильность названия файла</li>
+                            </ul>
+                            <p><a href="/">На главную</a> | <a href="/admin.html">В админку</a></p>
+                        </div>
+                    </body>
+                    </html>
+                `);
+            }
+        } catch (error) {
+            console.log('❌ Ошибка чтения файла:', error);
+            res.writeHead(500);
+            res.end('Internal Server Error');
+        }
+        return;
+    }
+    
     res.writeHead(404);
-    res.end('Not Found');
+    res.end('Not found');
 });
 
 // Запуск сервера
@@ -296,8 +365,20 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(`📍 Сетевой доступ: http://${localIP}:${PORT}`);
     console.log(`📍 Админка: http://localhost:${PORT}/admin.html`);
     console.log(`🔐 Пароль админки: ${ADMIN_PASSWORD}`);
-    console.log('🚀 Сервер успешно запущен!');
-    console.log('==========================================');
+    
+    const db = readDatabase();
+    console.log(`📊 Документов в базе: ${db.documents.length}`);
+    
+    let uploadsFiles = [];
+    try {
+        uploadsFiles = fs.readdirSync(UPLOADS_DIR);
+    } catch (error) {
+        console.log('📂 Папка uploads пуста');
+    }
+    console.log(`📂 Файлов в uploads: ${uploadsFiles.length}`);
+    
+    console.log('🚀 Сервер готов к работе!');
+    console.log('====================================');
 });
 
 function getLocalIP() {
@@ -312,7 +393,7 @@ function getLocalIP() {
     return 'localhost';
 }
 
-// Graceful shutdown
+// Обработка graceful shutdown
 process.on('SIGINT', () => {
     console.log('\n🛑 Останавливаем сервер...');
     server.close(() => {
