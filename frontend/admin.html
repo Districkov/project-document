@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ-панель - Документы</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="index.html" class="back-btn">← Назад к документам</a>
+            <h1>⚙️ Админ-панель</h1>
+            <p class="subtitle">Управление документами</p>
+        </header>
+
+        <div class="admin-panel">
+            <!-- Форма загрузки нового документа -->
+            <div class="upload-section">
+                <h2>📤 Загрузить новый документ</h2>
+                <form id="uploadForm" class="upload-form">
+                    <div class="form-group">
+                        <label for="documentName">Название документа:</label>
+                        <input type="text" id="documentName" required placeholder="Введите название документа">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="documentFile">Выберите файл:</label>
+                        <input type="file" id="documentFile" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.ppt,.pptx" required>
+                        <small>Поддерживаемые форматы: PDF, DOC, DOCX, JPG, PNG, PPT, PPTX</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="documentCategory">Категория:</label>
+                        <select id="documentCategory">
+                            <option value="general">Общие документы</option>
+                            <option value="contracts">Договоры</option>
+                            <option value="reports">Отчеты</option>
+                            <option value="presentations">Презентации</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn-primary">📁 Загрузить документ</button>
+                </form>
+            </div>
+
+            <!-- Список существующих документов -->
+            <div class="documents-list">
+                <h2>📋 Загруженные документы</h2>
+                <div id="documentsList" class="documents-grid">
+                    <!-- Список документов -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="admin.js"></script>
+</body>
+</html>
