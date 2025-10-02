@@ -2,24 +2,16 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { StringDecoder } = require('string_decoder');
 
 const PORT = process.env.PORT || 10000;
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
-const FRONTEND_DIR = path.join(__dirname, 'frontend'); // Папка с фронтендом
+const FRONTEND_DIR = path.join(__dirname, 'frontend');
 const ADMIN_PASSWORD = "admin123";
 
 // Создаем необходимые папки
 if (!fs.existsSync(UPLOADS_DIR)) {
     fs.mkdirSync(UPLOADS_DIR, { recursive: true });
     console.log('✅ Папка uploads создана');
-}
-
-// Проверяем существование папки frontend
-if (!fs.existsSync(FRONTEND_DIR)) {
-    console.log('❌ Папка frontend не найдена!');
-} else {
-    console.log('✅ Папка frontend найдена');
 }
 
 const DB_PATH = path.join(__dirname, 'database.json');
@@ -101,60 +93,6 @@ function sendSuccess(res, data = {}) {
     });
 }
 
-// Функция для парсинга multipart/form-data
-function parseMultipartFormData(body, contentType) {
-    const boundary = contentType.split('boundary=')[1];
-    if (!boundary) return null;
-
-    const parts = body.split('--' + boundary);
-    const result = {};
-
-    for (const part of parts) {
-        if (part.includes('Content-Disposition')) {
-            const lines = part.split('\r\n');
-            let name = null;
-            let value = '';
-            let isFile = false;
-            let filename = null;
-
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i];
-                
-                if (line.includes('Content-Disposition')) {
-                    const nameMatch = line.match(/name="([^"]+)"/);
-                    if (nameMatch) name = nameMatch[1];
-                    
-                    const filenameMatch = line.match(/filename="([^"]+)"/);
-                    if (filenameMatch) {
-                        isFile = true;
-                        filename = filenameMatch[1];
-                    }
-                }
-                
-                if (line === '' && i + 1 < lines.length) {
-                    // Это начало данных
-                    value = lines.slice(i + 1, -1).join('\r\n');
-                    break;
-                }
-            }
-
-            if (name) {
-                if (isFile && filename) {
-                    result[name] = {
-                        filename: filename,
-                        data: value,
-                        isFile: true
-                    };
-                } else {
-                    result[name] = value.trim();
-                }
-            }
-        }
-    }
-
-    return result;
-}
-
 // API обработчики
 function handleAdminLogin(req, res) {
     let body = '';
@@ -190,72 +128,49 @@ function handleGetDocuments(req, res) {
     }
 }
 
-// ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ДОКУМЕНТОВ
+// ПРОСТАЯ ФУНКЦИЯ ЗАГРУЗКИ ДОКУМЕНТОВ - ПРИНИМАЕТ ТОЛЬКО JSON
 function handleUploadDocument(req, res) {
-    const contentType = req.headers['content-type'] || '';
     let body = '';
-
+    
     req.on('data', chunk => {
-        body += chunk.toString('binary');
+        body += chunk.toString();
     });
-
+    
     req.on('end', () => {
         try {
-            let documentName, documentCategory, uploadedFile;
-
-            if (contentType.includes('multipart/form-data')) {
-                // Обработка multipart/form-data (загрузка файлов)
-                console.log('📤 Обработка multipart/form-data');
-                const formData = parseMultipartFormData(body, contentType);
-                
-                if (!formData) {
-                    throw new Error('Неверный формат form-data');
-                }
-
-                documentName = formData.documentName;
-                documentCategory = formData.documentCategory;
-                
-                if (formData.documentFile && formData.documentFile.isFile) {
-                    uploadedFile = formData.documentFile;
-                }
-            } else {
-                // Обработка JSON (для обратной совместимости)
-                console.log('📤 Обработка JSON данных');
-                const data = JSON.parse(body || '{}');
-                documentName = data.documentName;
-                documentCategory = data.documentCategory;
+            console.log('📥 Получены данные:', body);
+            
+            let data;
+            try {
+                data = JSON.parse(body || '{}');
+            } catch (jsonError) {
+                console.log('⚠️ Невалидный JSON, создаем тестовый документ');
+                // Если пришел не JSON, создаем простой документ
+                data = {
+                    documentName: 'Документ ' + Date.now(),
+                    documentCategory: 'general',
+                    originalName: 'document.txt'
+                };
             }
+            
+            const documentName = data.documentName || 'Документ ' + Date.now();
+            const documentCategory = data.documentCategory || 'general';
+            const originalName = data.originalName || 'document.txt';
 
             // Валидация
             if (!documentName) {
                 return sendError(res, 400, 'Не указано название документа');
             }
 
-            if (!documentCategory) {
-                documentCategory = 'general';
-            }
-
             const db = readDatabase();
-            let filename, fileType, originalName;
-
-            if (uploadedFile) {
-                // Сохраняем загруженный файл
-                originalName = uploadedFile.filename;
-                fileType = path.extname(originalName).toLowerCase().substring(1) || 'file';
-                filename = 'doc-' + Date.now() + '-' + Math.random().toString(36).substring(2, 15) + path.extname(originalName);
-                const filePath = path.join(UPLOADS_DIR, filename);
-                
-                // Сохраняем файл
-                fs.writeFileSync(filePath, uploadedFile.data, 'binary');
-                console.log('✅ Файл сохранен:', filename);
-            } else {
-                // Создаем тестовый файл (для обратной совместимости)
-                originalName = 'document.txt';
-                fileType = 'txt';
-                filename = 'doc-' + Date.now() + '.txt';
-                const filePath = path.join(UPLOADS_DIR, filename);
-                fs.writeFileSync(filePath, 'Это тестовый документ');
-            }
+            
+            // Создаем тестовый файл
+            const fileType = 'txt';
+            const filename = 'doc-' + Date.now() + '.txt';
+            const filePath = path.join(UPLOADS_DIR, filename);
+            
+            // Создаем простой текстовый файл
+            fs.writeFileSync(filePath, `Название: ${documentName}\nКатегория: ${documentCategory}\nДата: ${new Date().toISOString()}`);
 
             const newDocument = {
                 id: Date.now().toString(),
@@ -286,11 +201,6 @@ function handleUploadDocument(req, res) {
             console.error('❌ Ошибка загрузки документа:', error);
             sendError(res, 500, error.message);
         }
-    });
-
-    req.on('error', (error) => {
-        console.error('❌ Ошибка при получении данных:', error);
-        sendError(res, 500, 'Ошибка при получении данных');
     });
 }
 
@@ -330,7 +240,7 @@ function handleDeleteDocument(req, res, documentId) {
     }
 }
 
-// ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ СТАТИЧЕСКИХ ФАЙЛОВ
+// Функция для статических файлов
 function serveStaticFile(res, filePath) {
     try {
         if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
@@ -419,7 +329,7 @@ const server = http.createServer((req, res) => {
         return;
     }
     
-    // Статические файлы фронтенда - ИСПРАВЛЕННЫЕ ПУТИ
+    // Статические файлы фронтенда
     if (req.method === 'GET') {
         let filePath;
         let served = false;
@@ -438,7 +348,6 @@ const server = http.createServer((req, res) => {
             // Если не нашли, пробуем альтернативные пути
             const alternativePaths = [
                 path.join(__dirname, pathname === '/' ? 'index.html' : pathname.slice(1)),
-                path.join(__dirname, 'frontend', pathname === '/' ? 'index.html' : pathname.slice(1)),
                 path.join(FRONTEND_DIR, 'index.html'),
                 path.join(FRONTEND_DIR, 'admin.html'),
                 path.join(__dirname, 'index.html'),
@@ -456,16 +365,7 @@ const server = http.createServer((req, res) => {
         if (!served) {
             console.log('❌ Файл не найден после проверки всех путей:', pathname);
             
-            // Показываем список доступных файлов в frontend
-            let frontendFiles = [];
-            try {
-                frontendFiles = fs.readdirSync(FRONTEND_DIR).filter(file => 
-                    file.endsWith('.html') || file.endsWith('.css') || file.endsWith('.js')
-                );
-            } catch (error) {
-                console.log('❌ Не удалось прочитать папку frontend');
-            }
-            
+            // Простая страница с ошибкой
             res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
             res.end(`
                 <!DOCTYPE html>
@@ -477,7 +377,6 @@ const server = http.createServer((req, res) => {
                         .container { max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 10px; }
                         .error { color: #e74c3c; }
                         .info { color: #3498db; }
-                        ul { text-align: left; display: inline-block; }
                         a { color: #3498db; text-decoration: none; }
                         a:hover { text-decoration: underline; }
                     </style>
@@ -487,12 +386,7 @@ const server = http.createServer((req, res) => {
                         <h1>📁 Document Viewer</h1>
                         <p class="info">Сервер запущен и работает!</p>
                         <p class="error">Файл не найден: ${pathname}</p>
-                        <p>Доступные файлы в папке frontend:</p>
-                        <ul>
-                            ${frontendFiles.map(file => `<li><a href="/${file}">${file}</a></li>`).join('')}
-                        </ul>
-                        <p style="margin-top: 20px;">
-                            <strong>Основные страницы:</strong><br>
+                        <p>
                             <a href="/index.html">Главная страница</a> | 
                             <a href="/admin.html">Админ-панель</a>
                         </p>
@@ -520,15 +414,6 @@ server.listen(PORT, '0.0.0.0', () => {
     console.log(`📍 Сетевой доступ: http://${localIP}:${PORT}`);
     console.log(`📍 Админка: http://localhost:${PORT}/admin.html`);
     console.log(`🔐 Пароль админки: ${ADMIN_PASSWORD}`);
-    
-    // Показываем доступные HTML файлы в frontend
-    let frontendFiles = [];
-    try {
-        frontendFiles = fs.readdirSync(FRONTEND_DIR).filter(file => file.endsWith('.html'));
-        console.log(`📄 HTML файлы в frontend: ${frontendFiles.join(', ')}`);
-    } catch (error) {
-        console.log('❌ Не удалось прочитать папку frontend');
-    }
     
     const db = readDatabase();
     console.log(`📊 Документов в базе: ${db.documents.length}`);

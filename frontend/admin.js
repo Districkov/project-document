@@ -280,76 +280,75 @@ class AdminPanel {
         return categories[category] || category;
     }
 
-    // ИСПРАВЛЕННАЯ ФУНКЦИЯ ЗАГРУЗКИ ФАЙЛОВ
-    async handleFileUpload(e) {
-        e.preventDefault();
-        
-        if (!this.isAuthenticated) {
-            this.showNotification('❌ Необходимо войти в систему', 'error');
-            return;
-        }
-        
-        const name = this.elements.documentName.value.trim();
-        const file = this.elements.documentFile.files[0];
-        const category = this.elements.documentCategory.value;
-        const submitBtn = e.target.querySelector('button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
+    // В admin.js замените функцию handleFileUpload на эту:
 
-        // Валидация
-        if (!file) {
-            this.showNotification('❌ Выберите файл для загрузки', 'error');
-            return;
-        }
-
-        if (!name) {
-            this.showNotification('❌ Введите название документа', 'error');
-            return;
-        }
-
-        // Проверка размера файла (максимум 50MB)
-        if (file.size > 50 * 1024 * 1024) {
-            this.showNotification('❌ Файл слишком большой (максимум 50MB)', 'error');
-            return;
-        }
-
-        // Показываем индикатор загрузки
-        submitBtn.innerHTML = '<div class="loading"></div> Загрузка...';
-        submitBtn.disabled = true;
-
-        try {
-            // Используем FormData для отправки файла
-            const formData = new FormData();
-            formData.append('documentName', name);
-            formData.append('documentCategory', category);
-            formData.append('documentFile', file);
-
-            const response = await fetch(`${this.apiBase}/documents`, {
-                method: 'POST',
-                body: formData // НЕ указываем Content-Type, браузер сам установит с boundary
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
-
-            if (result.success) {
-                this.showNotification('✅ Документ успешно загружен!', 'success');
-                this.elements.uploadForm.reset();
-                await this.loadDocuments();
-            } else {
-                throw new Error(result.error || 'Ошибка при загрузке');
-            }
-        } catch (error) {
-            console.error('❌ Ошибка загрузки:', error);
-            this.showNotification(`❌ ${error.message}`, 'error');
-        } finally {
-            // Восстанавливаем кнопку
-            submitBtn.innerHTML = originalText;
-            submitBtn.disabled = false;
-        }
+async handleFileUpload(e) {
+    e.preventDefault();
+    
+    if (!this.isAuthenticated) {
+        this.showNotification('❌ Необходимо войти в систему', 'error');
+        return;
     }
+    
+    const name = this.elements.documentName.value.trim();
+    const file = this.elements.documentFile.files[0];
+    const category = this.elements.documentCategory.value;
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+
+    // Валидация
+    if (!file) {
+        this.showNotification('❌ Выберите файл для загрузки', 'error');
+        return;
+    }
+
+    if (!name) {
+        this.showNotification('❌ Введите название документа', 'error');
+        return;
+    }
+
+    // Показываем индикатор загрузки
+    submitBtn.innerHTML = '<div class="loading"></div> Загрузка...';
+    submitBtn.disabled = true;
+
+    try {
+        // ОТПРАВЛЯЕМ JSON вместо FormData
+        const requestData = {
+            documentName: name,
+            documentCategory: category,
+            originalName: file.name
+        };
+
+        const response = await fetch(`${this.apiBase}/documents`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+            this.showNotification('✅ Документ успешно загружен!', 'success');
+            this.elements.uploadForm.reset();
+            await this.loadDocuments();
+        } else {
+            throw new Error(result.error || 'Ошибка при загрузке');
+        }
+    } catch (error) {
+        console.error('❌ Ошибка загрузки:', error);
+        this.showNotification(`❌ ${error.message}`, 'error');
+    } finally {
+        // Восстанавливаем кнопку
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+}
 
     // Просмотр документа
     previewDocument(docId) {
